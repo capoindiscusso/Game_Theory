@@ -1,0 +1,19 @@
+# Cartelle di sistema di Julia
+Manifest.toml
+/packages/
+/compiled/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# File temporanei e Log
+*.log
+*.tmp
+
+# Cartelle di VS Code
+.vscode/
+
+# Dati pesanti (opzionale)
+*.csv
+*.sqlite
