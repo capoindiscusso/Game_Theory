@@ -3,7 +3,7 @@ using Graphs
 
 """GRAPH CREATORS"""
 
-lattice(n) = diagm(1=>trues(n-1), -1=>trues(n-1))
+lattice(n) = diagm(1=>trues(n-1), -1=>trues(n-1)) 
 clattice(n) = n == 2 ? lattice(n) : diagm(1=>trues(n-1), -1=>trues(n-1), (n-1)=>trues(1), (-n+1)=>trues(1))
 
 function createGraphLattice(N1,N2; periodic = false)
