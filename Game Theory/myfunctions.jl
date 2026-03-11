@@ -12,14 +12,14 @@ end
 
 function createUndirectedGraphStar(N)
     G = zeros(N,N)
-    G[1,2:N] = 1.0
-    G[2:N,1] = 1.0
+    G[1,2:N] .= 1.0
+    G[2:N,1] .= 1.0
     G 
 end
 
 function createDirectedGraphStar(N)
     G = zeros(N,N)
-    G[2:N,1] = 1.0
+    G[2:N,1] .= 1.0
     G 
 end
 
