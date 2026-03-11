@@ -10,10 +10,25 @@ function createGraphLattice(N1,N2; periodic = false)
     kron(I(N2),lattice(N1)) .| kron(lattice(N2),I(N1))
 end
 
-function createGraphStar(N)
+function createUndirectedGraphStar(N)
     G = zeros(N,N)
-    G[2:end,2:end] = clattice(N-1).*rand(N-1,N-1)
-    G[1,2:end] = rand(N-1)
+    G[1,2:N] = 1.0
+    G[2:N,1] = 1.0
+    G 
+end
+
+function createDirectedGraphStar(N)
+    G = zeros(N,N)
+    G[2:N,1] = 1.0
+    G 
+end
+
+function createDirectedGraphRing(N)
+        G = zeros(N, N)
+        for i in 1:N-1
+            G[i, i+1] = 1.0
+        end
+    G[N, 1] = 1.0   
     G 
 end
 
@@ -30,6 +45,16 @@ end
 function createGraphFullyConnected(N)
     G = ones(N,N)
     G -= Diagonal(G)
+    G
+end
+
+function createGraphInfluencersCommunities(N_infl, size_com, n_com)
+    N = N_infl + n_com*size_com
+    G = zeros(N, N)
+    for i in 0:n_com-1
+        G[N_infl+1+size_com*i:N_infl+size_com+i*size_com, N_infl+1+size_com*i:N_infl+size_com+i*size_com] = createGraphFullyConnected(size_com)
+    end
+    G[N_infl+1:N, 1:N_infl] .= 1.0
     G
 end
 
