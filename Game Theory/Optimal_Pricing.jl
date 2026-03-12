@@ -556,6 +556,313 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 #
 # is analogous to the one obtained in the fully connected graph, considering that in this case $\sum_jg_{ij} = 1 \ \forall i$. Considerations similar to the ones for the fully connected graph can be done.
 
+# +
+N = 9
+a = 10.0
+b = 12.0
+c = 2.0
+
+G = createDirectedGraphRing(N)
+checkParameters(G, a, b, c)
+
+M = influenceMatrix(G, b)
+
+x_star = bestResponse(M, a, b, c)
+println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
+
+p_star = bestPrice(M, a, b, c)
+println("Prezzo ottimale: ", round.(p_star, digits=4))
+
+x_star_explicit = (0.5 * (a - c) / (b - 1)) * ones(N)
+p_star_explicit = 0.5 * (a + c) * ones(N)
+
+println("x_star teorica: ", round.(x_star_explicit, digits=4))
+println("p_star teorica: ", round.(p_star_explicit, digits=4))
+
+using GraphRecipes
+graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey, arrow=true)
+# -
+
+# ### Generic Regular Graph
+#
+# The previous examples suggest that the regularity of a graph plays a fundamental role in determining the optimal price vector and the consumers' usages at equilibrium. Extending the analysis to the case of weighted graphs, in which we can include in the adjacency matrix $G$ (now called weight matrix) different weights $g_{ij} \geq 0$ associated to different edges $(i,j)$, we say that a graph is *regular* if $\sum_jg_{ij}  = \sum_jg_{ji}  = w  \ \forall i$, i.e, if all nodes have the same out-degree, which is also equal to their in-degree. 
+# In this cases, by hypothesis:
+#
+# $$\begin{aligned}
+#     G𝟙 &= w𝟙 \\
+#     G^\top𝟙 &= w𝟙
+# \end{aligned}$$
+#
+# Then, if $b > \sum_j g_{ij} = w$:
+#
+# $$\begin{aligned}
+#     M𝟙 &= \left(I-\frac{G}{b}\right)^{-1}𝟙 = \sum_{k=0}^\infty\left(\frac{G}{b}\right)^k𝟙 = \sum_{k=0}^\infty\left(\frac{w}{b}\right)^k𝟙 = \frac{b}{b-w}𝟙 \\
+#     M^\top𝟙 &= \left[\left(I-\frac{G}{b}\right)^{-1}\right]^\top𝟙 = \sum_{k=0}^\infty\left[\left(\frac{G}{b}\right)^k\right]^\top𝟙 = \sum_{k=0}^\infty\left(\frac{w}{b}\right)^k𝟙 = \frac{b}{b-w}𝟙 
+# \end{aligned}$$
+#
+# Therefore:
+#
+# $$\begin{aligned}
+# p^* &= c𝟙 + (a-c)(M + M^\top)^{-1} M 𝟙 = \left[c+(a-c)\frac{b}{b-w}(M+M^\top)^{-1}\right]𝟙 = \\
+#     &= \left[c+(a-c)\frac{b}{b-w}\frac{b-w}{2b}\right]𝟙= \\
+#     &= \left[c+\frac{1}{2}(a-c)\right]𝟙\\
+#     &= \frac{1}{2}(a+c)𝟙
+# \end{aligned}$$
+#
+# and:
+#
+# \begin{align*}
+# x^* & = M\frac{a𝟙-p^*}{b} =\frac{1}{2}\frac{a-c}{b}M𝟙 = 
+# \frac{1}{2}\frac{a-c}{b}\frac{b}{b-w}𝟙 = 
+# \frac{1}{2}\frac{a-c}{b-w}𝟙
+# \end{align*}
+#
+# in perfect agreement with the fully connected example in which $w = N-1$ and with the directed ring example in which $w = 1$. Again, the conditions $a>c$ and $b>w$ are sufficient to guarantee a well defined usage inversely proportional to the difference $b-w$.
+# Notice in all the cases discussed so far both the optimal prices and the Nash equilibrium usages are the same for every agent. 
+
+# +
+N = 9
+a = 10.0
+b = 12.0
+c = 2.0
+d = 4
+
+G = adjacency_matrix(random_regular_graph(N, d))
+G = Matrix(G) * 1.0
+
+checkParameters(G, a, b, c)
+
+M = influenceMatrix(G, b)
+
+x_star = bestResponse(M, a, b, c)
+println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
+
+p_star = bestPrice(M, a, b, c)
+println("Prezzo ottimale: ", round.(p_star, digits=4))
+
+w = sum(G[1, :])
+x_star_explicit = (0.5 * (a - c) / (b - w)) * ones(N)
+p_star_explicit = 0.5 * (a + c) * ones(N)
+
+println("x_star teorica: ", round.(x_star_explicit, digits=4))
+println("p_star teorica: ", round.(p_star_explicit, digits=4))
+
+graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
+# -
+
+# ### Undirected Star Graph
+#
+# In an *undirected star graph* a central node (or *hub*) is connected through undirected edges to $N-1$ leaves, which therefore are not connected to each other.
+#
+#
+# Fixing the hub to be the node $i=1$ and the $N-1$ leaves to be the nodes $i=2\dots N$,
+# the adjacency matrix is
+# \begin{align*}
+#     G = \begin{pmatrix} 0 & 1 & 1 & 1 &\cdots & 1 \\ 1 & 0 & 0 & 0 &\cdots & 0 \\1 & 0 & 0 & 0 &\cdots & 0 \\ \vdots & \vdots & \ddots & \ddots & \ddots &\vdots \\ 1 & 0 & 0 & 0 &\cdots & 0  \\1 & 0 & 0 & 0 &\cdots & 0  \end{pmatrix}
+# \end{align*} 
+#
+# We immediately see that the graph is not regular, since 
+# \begin{align*}
+#     \sum_j g_{ij} = \begin{cases}
+#         N-1 \ &\text{if $i=1$}\\
+#         1 &\text{otherwise}
+#     \end{cases}
+# \end{align*}
+# The graph is undirected, thus we can immediately deduce the optimal price vector $p^*=\frac{1}{2}(a+c)𝟙$.
+# Recalling that in an undirected graph $x^* = \frac{1}{2}\frac{a-c}{b}M𝟙$ we focus on evaluating $z \doteq M𝟙 $. By definition
+#
+# \begin{align*}
+#        z &= M𝟙 = \left(I-\frac{G}{b}\right)^{-1}𝟙 \\ \Rightarrow &(bI-G)z = b𝟙
+# \end{align*}
+# From which we get $N-1$ equivalent equations for the leaves:
+# \begin{align*}
+#        &bz_k-z_1 = b \\
+#        \Rightarrow &z_k=\frac{b+z_1}{b} \  \ \forall k=2\dots N
+# \end{align*}
+# And an equation for the hub:
+# \begin{align*}
+#        bz_1-\sum_{k=2}^Nz_k = &b
+# \end{align*}
+# Combining them together we obtain:
+# \begin{align*}
+#         &bz_1- (N-1)\frac{b+z_1} {b} = b \\
+#         &\Rightarrow \ \ z_1 = \frac{b (b+N-1)}{b^2-(N-1)}\\
+#          &\Rightarrow \ \ z_k  = \frac{b(b+1)}{b^2-(N-1)}
+# \end{align*}
+# So that
+# \begin{align*}
+#     x^*=\frac{1}{2}\frac{a-c}{b} M 𝟙 =  \frac{1}{2}\frac{a-c}{b^2-(N-1)}\begin{bmatrix}
+#     b+N-1 \\
+#     b+1 \\
+#     b+1\\
+#     \vdots \\
+#     b+1
+# \end{bmatrix}
+# \end{align*}    
+#
+# Despite the price being the same for every agent, the central hub is pushed to consume more than any leaf due to the great effect of positive externality.
+#
+
+# +
+N = 9
+a = 10.0
+b = 12.0
+c = 2.0
+
+G = createUndirectedGraphStar(N)
+
+checkParameters(G, a, b, c)
+
+M = influenceMatrix(G, b)
+
+x_star = bestResponse(M, a, b, c)
+println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
+
+p_star = bestPrice(M, a, b, c)
+println("Prezzo ottimale: ", round.(p_star, digits=4))
+
+z1 = b * (b + N - 1) / (b^2 - (N - 1))
+zk = b * (b + 1) / (b^2 - (N - 1))
+z = [z1; fill(zk, N-1)]
+x_star_explicit = (0.5 * (a - c) / b) * z
+p_star_explicit = 0.5 * (a + c) * ones(N)
+
+println("x_star teorica: ", round.(x_star_explicit, digits=4))
+println("p_star teorica: ", round.(p_star_explicit, digits=4))
+
+graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
+# -
+
+# ### Directed Star Graph: Single Influencer and Isolated Followers
+#
+# We recall that, by looking at the best response for each agent $ B_i(x_{-i})= \frac{a-p_i}{b}+\frac{1}{b}\sum_jg_{ij}x_j$, we must interpret a directed edge $(i,j)$ from $i$ to $j$ as the influence that $j$ has on $i$. It follows that to model a star graph with a central influencer we must construct a graph in which all the leaves in the star have an outgoing edge connecting them to the central hub. Namely:
+# \begin{align*}
+# G = \begin{pmatrix} 0 & 0 & 0 &\cdots & 0 \\ 1 & 0 & 0 &\cdots & 0  \\ 1 & 0 & 0 &\cdots & 0 \\ \vdots & \ddots & \ddots & \ddots  &\vdots \\1 & 0 & 0 &\cdots & 0  \end{pmatrix}
+# \end{align*}
+# We immediately deduce: 
+# \begin{align*}
+#     &G^k = 0 \ \ \forall k >1 \\
+# \end{align*}
+# since no paths of length $l>1$ are present in the graph (the hub is a sink). 
+# Moreover
+# \begin{align*}
+#     &G𝟙 = 𝟙-\delta^{(1)}\\
+# \end{align*}
+# Thus 
+# \begin{align*}
+#        &M= \sum_{k=0}^\infty\left(\frac{G}{b}\right)^k = \sum_{k=0}^1\left(\frac{G}{b}\right)^k = \left(I+\frac{G}{b}\right) \\
+#        &M𝟙 = 𝟙+\frac{1}{b}(𝟙-\delta^{(1)}) = \frac{b+1}{b}𝟙-\frac{1}{b}\delta^{(1)} = \begin{bmatrix}
+#         1 \\
+#         (b+1)/b \\
+#         (b+1)/b\\
+#         \vdots \\
+#         (b+1)/b\\
+#         \end{bmatrix} \\
+#        &M+M^T = 2I+\frac{1}{b}(G+G^\top)\ = 2I + \frac{1}{b}G_{und} = \begin{pmatrix} 2 & 1/b & 1/b &\cdots & 1/b \\ 1/b & 2 & 0 &\cdots & 0  \\ 1/b & 0 & 2 &\cdots & 0 \\ \vdots & \ddots & \ddots & \ddots  &\vdots \\1/b & 0 & 0 &\cdots & 2
+#     \end{pmatrix}
+# \end{align*}
+# with $G_{und}$ being the adjacency matrix of the undirected star graph.
+# To find the optimal price vector, we're interested in computing $\phi \doteq (M+M^\top)^{-1}M𝟙$: this is achieved by solving the system
+# \begin{align*}
+#     (M+M^\top)\phi = M𝟙 \iff 
+#     \begin{pmatrix} 2 & 1/b & 1/b &\cdots & 1/b \\ 1/b & 2 & 0 &\cdots & 0  \\ 1/b & 0 & 2 &\cdots & 0 \\ \vdots & \ddots & \ddots & \ddots  &\vdots \\1/b & 0 & 0 &\cdots & 2
+#     \end{pmatrix}\begin{bmatrix}
+#         \phi_1 \\
+#         \phi_2 \\
+#         \phi_3\\
+#         \vdots \\
+#         \phi_N\\
+#         \end{bmatrix} = 
+#     \begin{bmatrix}
+#         1 \\
+#         (b+1)/b \\
+#         (b+1)/b\\
+#         \vdots \\
+#         (b+1)/b\\
+#         \end{bmatrix}
+# \end{align*}
+# By symmetry of the problem (all leaves are equivalent): $\phi_2=\phi_3 = \dots = \phi_N \doteq \phi_L$. The system reduces to:
+# \begin{align*}
+#     &2\phi_1 + \frac{N-1}{b}\phi_L = 1 \\ 
+#     &\frac{\phi_1}{b} + 2\phi_L = \frac{b+1}{b}\\
+#     \Rightarrow \ &\phi = (M+M^\top)^{-1}M𝟙= \frac{1}{4b^2-(N-1)}\begin{bmatrix}
+#         2b^2-(b+1)(N-1) \\
+#         2b^2+b \\
+#         2b^2+b\\
+#         \vdots \\
+#         2b^2+b\\
+#         \end{bmatrix} 
+# \end{align*}
+# So that finally:
+# \begin{align*}
+# p^* &= c𝟙 + (a-c)(M + M^\top)^{-1} M 𝟙 = c𝟙+(a-c)\phi = \\
+#     &= \begin{bmatrix}
+#         c \\
+#         c \\
+#          c\\
+#         \vdots \\
+#          c\\
+#         \end{bmatrix}+\frac{a-c}{4b^2-(N-1)}\begin{bmatrix}
+#         2b^2-(b+1)(N-1) \\
+#         2b^2+b \\
+#         2b^2+b\\
+#         \vdots \\
+#         2b^2+b\\
+#         \end{bmatrix} 
+# \end{align*}
+# It is indeed verified that for $b>(N-1)$, $p^*_1 < p^*_L$, confirming the fact that the hub, i.e. the agent that strongly influence the others, gets a lower price.\
+# It can be meaningful to investigate the limit $b \gg \sqrt{(N-1)} \iff \frac{(N-1)}{b^2} \ll 1$, where the sensibility to own consumption (actually, its square) is much greater than the positive externality effect. In this case
+# \begin{align*}
+#     &\phi_1 = \frac{2-\frac{(N-1)}{b}-\frac{(N-1)}{b^2}}{4-\frac{(N-1)}{b^2}} = \frac{1}{2} -\frac{(N-1)}{4b} + o\left(\frac{(N-1)}{b^2}\right) \Rightarrow p^*_1 \simeq \frac{1}{2}(a+c)-\frac{a-c}{b}(N-1) \\
+#     &\phi_L = \frac{2+\frac{1}{b}}{4-\frac{(N-1)}{b^2}} = \frac{1}{2}+\frac{1}{4b} + o\left(\frac{(N-1)}{b^2}\right) \Rightarrow p^*_L \simeq \frac{1}{2}(a+c)+\frac{a-c}{4b} 
+# \end{align*}
+# The price applied on the hub is smaller than the unbiased one, while
+# the price applied on leaves has still a positive increment $\frac{a-c}{4b}$. This corrections becomes negligible when $b \gg (a-c)$ and $b \gg (N-1)$. \
+# Finally, the corresponding consumers' usages at Nash equilibrium are
+# \begin{align*}
+#     x^* &= M \frac{a𝟙 - p^*}{b} = \frac{a-c}{b}M[𝟙-\phi] = \frac{a-c}{b^2}\begin{bmatrix}
+#         b(1-\phi_1) \\
+#         (1-\phi_1)+b(1-\phi_L) \\
+#         (1-\phi_1)+b(1-\phi_L)\\
+#         \vdots \\
+#         (1-\phi_1)+b(1-\phi_L)\\
+#         \end{bmatrix}\\
+# \end{align*}
+# and $x_1^* > x_L^*$ holds: the central hub consumes more than anyone else.
+
+# +
+N = 9
+a = 10.0
+b = 12.0
+c = 2.0
+
+G = createDirectedGraphStar(N)
+
+checkParameters(G, a, b, c)
+
+M = influenceMatrix(G, b)
+
+x_star = bestResponse(M, a, b, c)
+println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
+
+p_star = bestPrice(M, a, b, c)
+println("Prezzo ottimale: ", round.(p_star, digits=4))
+
+denom = 4 * b^2 - (N - 1)
+phi1 = (2 * b^2 - (b + 1) * (N - 1)) / denom
+phil = (2 * b^2 + b) / denom
+phi = [phi1; fill(phil, N-1)]
+
+x_explicit = (a - c) / b^2 * [b * (1 - phi1); fill((1 - phi1) + b * (1 - phil), N-1)]
+println("x_star teorica: ", round.(x_explicit, digits=4))
+
+p_star_explicit = c * ones(N) + (a - c) * phi
+println("p_star teorica: ", round.(p_star_explicit, digits=4))
+
+
+graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey, arrow=true)
+# -
+
 # ### Single Influencer and Fully Connected Followers
 #
 # With respect to the previous case we now construct a network in which nodes $i = 2\dots N$ form a fully connected graph and from each of these nodes there's an outgoing edge connecting it to a hub $i=1$. Namely:
@@ -569,12 +876,12 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 # \phi_L\\
 # \vdots \\
 # \phi_L
-# \end{bmatrix} =
+# \end{bmatrix} = \frac{1}{4b^2 - 4b(N-2) - (N-1)}
 # \begin{bmatrix}
-# \dfrac{2b^2 - b(3N-5) - (N-1)}{4b^2 - 4b(N-2) - (N-1)} \\[8pt]
-# \dfrac{(2b+1)(b-(N-2))}{4b^2 - 4b(N-2) - (N-1)} \\
+# 2b^2 - b(3N-5) - (N-1) \\[8pt]
+# (2b+1)(b-(N-2))\\
 # \vdots \\
-# \dfrac{(2b+1)(b-(N-2))}{4b^2 - 4b(N-2) - (N-1)}
+# (2b+1)(b-(N-2))
 # \end{bmatrix}
 # \end{align*}
 # with the optimal price being
@@ -585,7 +892,7 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 # \begin{align*}
 #    p^*_{\text{connected follower}} - p^*_{\text{isolated follower}}   =  \frac{(2b+1)(b-(N-2))}{4b^2 - 4b(N-2) - (N-1)} -\frac{2b^2+b}{4b^2-(N-1)}  > 0 \ \ \  \forall b, N |\  b >N-1, N>2
 # \end{align*}
-# That is to say the positive externality added in this second case (if we're in a well defined problem with $N>2$) causes the  price on the followers to rise.
+# That is to say the positive externality added in this second case (if we're in a well posed problem with $N>2$) causes the  price on the followers to rise.
 # Finally:
 # \begin{align*}
 #     x^* = \frac{a-c}{b}M[𝟙-\phi] = \frac{a-c}{b}\begin{bmatrix}
@@ -595,8 +902,8 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 # \dfrac{b}{b-(N-2)}\left( \dfrac{1-\phi_1}{b}+1-\phi_L\right)
 # \end{bmatrix}
 # \end{align*}
-# This time it is verified that 
-# $x^*_1 < x^*_L$: not only the central hub gets a lower price, it is also pushed to consume less than the others.
+# This time it is verified that, for a well posed problem,
+# $x^*_1 < x^*_L$: not only the central hub gets a price lower than the price for the leaves, it is also pushed to consume less than the others.
 
 # +
 N = 9
@@ -955,12 +1262,12 @@ ylabel!("reward")
 # $$u_i(x_i) = ax_i - \frac{b}{2}x_i^2 + \left( \sum_{j=1}^N g_{ij}x_j \right)x_i - p_i x_i$$
 #
 #
-# Consumers are boundedly rational. When evaluating their optimal adoption level, they follow a **Noisy Best Response** rule, where the probability of choosing $x_i$ is proportional to the exponential of their utility, weighted by a rationality parameter $\beta$:
+# Consumers are boundedly rational. When evaluating their optimal adoption level, they follow a Noisy Best Response rule, where the probability of choosing $x_i$ is proportional to the exponential of their utility, weighted by a rationality parameter $\beta$:
 # $$P(x_i) \propto \exp\{ \beta \cdot u_i(x_i, x_{-i}) \}$$
 #
 # Because the utility function is quadratic with respect to $x_i$, we can rewrite it as $u_i = -\frac{b}{2}x_i^2 + E_i x_i$, where $E_i = a - p_i + \sum g_{ij}x_j$. By substituting this into the probability distribution we get
 # $$P(x_i) \propto \exp\left\{ -\frac{\beta b}{2} \left(x_i - \frac{E_i}{b}\right)^2 \right\}$$
-# This proves that the NBR assumes the same form as the probability density function of a Gaussian Distribution $\mathcal{N}(\mu_i, \sigma^2)$, where
+# So the NBR assumes the same form as the probability density function of a Gaussian Distribution $\mathcal{N}(\mu_i, \sigma^2)$, where
 # * Mean: $\mu_i = \frac{a - p_i + \sum g_{ij}x_j}{b}$
 # * Variance: $\sigma^2 = \frac{1}{\beta b}$
 #
@@ -972,14 +1279,14 @@ ylabel!("reward")
 #
 # We introduce a resistance to change parameter, $s_i \in [0, 1]$. 
 # * With probability $s_i$, the consumer ignores the update opportunity and keeps their current adoption: $x_i(t+1) = x_i(t)$.
-# * With probability $1 - s_i$, the consumer updates their adoption by sampling from the NBR distribution: $x_i \sim \mathcal{N}(\mu_i, \sigma^2)$.
+# * With probability $1 - s_i$, the consumer updates their adoption using the NBR distribution: $x_i \sim \mathcal{N}(\mu_i, \sigma^2)$.
 #
 # ### 3. Greedy Bellman Equation
 #
 # The monopolist aims to find the optimal price variation $\Delta p_i$ to maximize expected profit at the next macro-time step. For this, we use a greedy Bellman Equation with a time horizon $T=1$. The reward function for the monopolist includes a penalty $\kappa (\Delta p_i)^2$ to prevent rapid changes in prices.
 # $$\max_{\Delta p_i} \mathbb{E}[r_{i,t}] = \max_{\Delta p_i} \left[ (p_i + \Delta p_i - c) \cdot \mathbb{E}[x_{i, t+1}] - \kappa (\Delta p_i)^2 \right]$$
 #
-# The monopolist estimates the expected response of node $i$ by assuming the rest of the network remains frozen at the current state $x(t)$, using a mean field approximation. So between each marco-time step, consumers adjust their consumption asinchronously according to NBR dynamics, considering the consuption the rest of the network fronzen at the previous macro-time step.
+# The monopolist estimates the expected response of node $i$ by assuming the rest of the network remains frozen at the current state $x(t)$. So between each marco-time step, consumers adjust their consumption asinchronously according to NBR dynamics, considering the consuption the rest of the network fronzen at the previous macro-time step.
 #
 # The expected adoption is
 # $$\mathbb{E}[x_{i, t+1}] = s_i x_{i,t} + (1-s_i) \frac{a-(p_i+\Delta p_i) + \sum_j g_{ij} x_{j,t}}{b}$$
@@ -994,7 +1301,7 @@ ylabel!("reward")
 # $$\max_{\Delta p_i} \mathbb{E}[r_{i,t}] = \max_{\Delta p_i} \left[ (p_i + \Delta p_i - c) \cdot (A_i - B_i \Delta p_i) - \kappa (\Delta p_i)^2 \right]$$
 #
 # To find the global maximum, we take the first derivative with respect to $\Delta p_i$ and set it to zero
-# $$ -2(B_i + \kappa)\Delta p_i + [A_i - B_i(p_i - c)] = 0$$
+# $$ -2(B_i + \kappa)\Delta p_i^* + [A_i - B_i(p_i - c)] = 0$$
 #
 # Solving for $\Delta p_i^*$, we obtain
 # $$\Delta p_i^* = \frac{A_i - B_i(p_i - c)}{2(B_i + \kappa)}$$
@@ -1587,27 +1894,32 @@ for i in nodes_to_plot
 end
 # -
 
-# # Reinforcement Learning: SARSA
+# ## <center>Reinforcement Learning: SARSA</center>
 #
 # ### 1. Discrete State-Action Space
 #
 # To use reinforcement learning, we need discrete state-action space, but in our problem both consumption and prices are continuous. To implement *SARSA* algorithm, we discretize this state-action space in bins according to the parameters of the problem and the structure of the graph, assuming always Noisy Best Response for consumers.
 #
-# Let the continuous state of user $i$ be their adoption level $x_i \in \mathbb{R}^+$ and the continuous action be the price variation $\Delta p_i \in \mathbb{R}$. We map these continuous variables into finite discrete sets $\mathcal{S}$ and $\mathcal{A}$.
+# Let $x_i \in \mathbb{R}^+$ be the continuous state of user $i$ and the price variation $\Delta p_i \in \mathbb{R}$ the continuous action. We map these continuous variables into finite discrete sets $\mathcal{S}$ and $\mathcal{A}$.
 #
 # To prevent rapid changes in price, we bound the maximum price variation $\Delta p_{max}$ between $c$, the production cost, and $a$, that is the intrinsic utility parameter. 
-# We define a discrete set of $K_a$ uniformly spaced actions:
+# We define a discrete set of $K_a$ uniformly spaced actions
 # $$\mathcal{A} = \{a_1, a_2, \dots, a_{K_a}\}$$
 # where $a_1 = -\Delta p_{max}$ and $a_{K_a} = +\Delta p_{max}$. 
 #
-# To discretize the consumption levels, we need to find a boundary. We first consider the upper bound, where $p=c$ and the agent get the maximum positive externality from the network.
-# Let's define $g_{max} = \max_i \sum_j g_{ij}$ be the maximum weighted in-degree of the network. We define the upper bound as
-# $$x_{max} = \frac{a - c}{b} (1 + g_{max}) + \frac{3}{\sqrt{\beta b}}$$
-# where $\frac{3}{\sqrt{\beta b}}$ is a safety margin equal to $3 \sigma$ of the Normal Distribution equivalent to the Noisy Best Response. 
+# To bound the consuption level of the agents, we consider the Nash equilibrium consumption of agent $i$
+# $$ x_i^* = \frac{a - p_i}{b} + \frac{1}{b} \sum_j g_{ij} x_j $$
+# Because the Noisy Best Response is equivalent to a Gaussian distribution, at $99.7\%$ the consumption is bounded by
+# $$x_i \le \mu_i + 3\sigma = \mu_i + \frac{3}{\sqrt{\beta b}}$$
+# We define $g_{max} = \max_i \sum_j g_{ij}$ be the maximum weighted in-degree of the network. To maximize $\mu_i$, we consider the minimum price $p_i=c$ and maximum positive externality $g_{max} x_{max} $
+# $$\mu_{max} \le \frac{a - c}{b} + \frac{g_{max}}{b} x_{max}$$
+# So the upper bound for $x_i$ is
+# $$x_{max} \le \frac{a - c}{b} + \frac{g_{max}}{b} x_{max} + \frac{3}{\sqrt{\beta b}} \\
+# x_{max} \le \frac{\frac{a - c}{b} + \frac{3}{\sqrt{\beta b}}}{1 - \frac{g_{max}}{b}}$$
 #
 # We then partition the interval $[0, x_{max}]$ into $K_s$ equally divided into bins and the continuous state $x_i$ is mapped to a discrete state index $S_i \in \{1, \dots, K_s\}$.
 #
-# ### 2. The Monopolist's Reward Function
+# ### 2. Reward Function
 #
 # The objective of the monopolist at time $t$ for user $i$ is the maximization of the profit. The  reward $r_{i,t}$ is 
 # $$r_{i,t} = (p_{i,t} - c)x_{i,t} - \kappa (\Delta p_{i,t})^2$$
@@ -1626,9 +1938,9 @@ end
 # $$
 #
 # At each macro-time step, after the network has asynchronously updated its adoptions through the Noisy Best Response dynamics, the monopolist observes the new discrete state $S_{t+1}$ and selects the next action $A_{t+1}$ using the $\epsilon$-greedy policy.
-# The Q-value for the visited state-action pair is updated as follows:
+# The Q-value for the visited state-action pair is updated as follows
 # $$Q_i(S_t, A_t) \leftarrow Q_i(S_t, A_t) + \alpha \left[ r_{i,t} + \delta Q_i(S_{t+1}, A_{t+1}) - Q_i(S_t, A_t) \right]$$
-# where:
+# where
 # * $\alpha \in (0, 1]$ is the learning rate.
 # * $\delta \in [0, 1)$ is the discount factor for future rewards.
 #
@@ -1764,39 +2076,64 @@ println("\nAvvio addestramento SARSA (Epsilon fisso a 0.1)...")
 Q_learned, x_history, p_history = train_sarsa!(x_init, p_init, G_matrix, a_val, b_val, c_val, beta_val, s_val, kappa_val, actions, x_max, K_s, epsilon=0.1)
 
 println("Addestramento completato.")
+# -
+
+# ## <center>ALGORITMO DI MATTEO PER IL 4 </center>
 
 # +
-using Plots
-using Plots.Measures 
+using LinearAlgebra, Plots, Graphs, SparseArrays, Printf
 
-nodes_to_plot = [1, 2, 3]
-time_steps = 1:min(500, size(x_history, 2))
- 
-plot_size = (900, 700)
-margin_sinistro = 5mm  
+N = 12
+a, b, c = 26.0, 12.0, 4.0 
+α, η, T = 0.5, 0.05, 1200
+diretto = false  
 
-for i in nodes_to_plot
-    # --- Grafico Utilizzo (x) ---
-    plt_x = plot(time_steps, x_history[i, time_steps]; 
-        label="Nodo $i", marker=:circle, linewidth=2, 
-        title="Utilizzo (x) - Nodo $i", xlabel="Tempo", ylabel="x", 
-        size=plot_size, left_margin=margin_sinistro)
-    display(plt_x)
+K = 10
 
-    # --- Grafico Prezzo (p) ---
-    plt_p = plot(time_steps, p_history[i, time_steps]; 
-        label="Nodo $i", marker=:circle, linewidth=2, color=:orange,
-        title="Prezzo (p) - Nodo $i", xlabel="Tempo", ylabel="p", 
-        size=plot_size, left_margin=margin_sinistro)
-    display(plt_p)
+g = erdos_renyi(N, 0.3, is_directed=diretto)
+G_raw = Float64.(adjacency_matrix(g))
+max_sum = maximum(sum(G_raw, dims=2))
+G = sparse(G_raw .* (b * 0.8 / max(1.0, max_sum)))
 
-    # --- Q-function ---
-    # Usiamo la trasposta per avere gli stati come linee e le azioni sull'asse x
-    q_values = Q_learned[i, :, :]' 
-    plt_q = plot(1:K_a, q_values; 
-        label=["Stato 1" "Stato 2" "Stato 3" "Stato 4" "Stato 5"],
-        marker=:circle, linewidth=2, title="Q-function - Nodo $i",
-        xlabel="Indice Azione", ylabel="Valore Q", 
-        size=plot_size, left_margin=margin_sinistro)
-    display(plt_q)
+x = fill(0.1, N)
+p = fill(a/2, N)    
+history_p = zeros(T, N)
+
+for t in 1:T
+    x_BR = (fill(a, N) - p + G * x) ./ b
+    x .= x .+ α .* (x_BR .- x)
+    
+    diff_p = p .- c
+    z_approx = zeros(N)
+    
+    current_term = copy(diff_p) ./ b
+    z_approx .+= current_term
+    for k in 1:K
+        current_term = (G' * current_term) ./ b
+        z_approx .+= current_term
+    end
+    
+    grad = x .- z_approx
+
+    p .+= η .* grad
+    
+    history_p[t, :] .= p
 end
+
+# --- Analisi Finale ---
+bonacich = inv(Matrix(I - (1/b) .* G')) * ones(N)
+out_deg = outdegree(g)
+perm = sortperm(p)
+
+# Visualizzazione Risultati
+header = @sprintf("Nodo | Out-D | Bonacich | Prezzo (K=%d)", K)
+table_rows = [@sprintf("%2d   | %4d  | %8.3f | %7.3f", 
+              perm[i], out_deg[perm[i]], bonacich[perm[i]], p[perm[i]]) for i in 1:N]
+table_text = header * "\n" * "-"^45 * "\n" * join(table_rows, "\n")
+
+p1 = plot(history_p, title="Prezzi con Dinamica Best-Response Locale", palette=:tab20, lw=2, legend=false)
+p2 = plot(title="Stato Finale", grid=false, showaxis=false, ticks=false)
+annotate!(p2, 0.1, 0.5, text(table_text, :left, 8, "Courier"))
+
+display(plot(p1, p2, layout=(2,1), size=(800, 850)))
+println(table_text)
