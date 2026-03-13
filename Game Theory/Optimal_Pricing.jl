@@ -82,7 +82,7 @@
 #
 # $$\min_i \sum_j g_{ij} \leq \rho(G) \leq \max_i \sum_j g_{ij}$$
 #
-# So, if $b > \sum_j g_{ij} \quad \forall i$, we have that $\rho(G) < 1$ and $(I - \frac{1}{b}G)^{-1} = \sum_{i=0}^\infty \left(\frac{1}{b}G\right)^i$.
+# So, if $b > \sum_j g_{ij} \ \forall i$, we have that $\rho(G) < 1$ and $(I - \frac{1}{b}G)^{-1} = \sum_{i=0}^\infty \left(\frac{1}{b}G\right)^i$.
 #
 # ### 2. Optimal Pricing
 #
@@ -141,12 +141,14 @@
 #
 # we see that, as mentioned before, the consumers' best response still depends on $M = (I - \frac{1}{b}G)^{-1}$, namely on the network topology.
 
+# ## Simulation
+
 # +
 using Graphs, GraphRecipes
 using Plots
 using SparseArrays, LinearAlgebra
 
-include("myfunctions.jl")
+include("static_analysis.jl")
   
 """PARAMETERS"""
 N = 9
@@ -162,8 +164,6 @@ c = 2.0
 G = createGraphFullyConnected(N)
 
 checkParameters(G, a, b, c)
-
-include("myfunctions.jl")
 
 #RANDOM USAGE AND PRICE INITIALIZATION
 my_p = 11.0*ones(N)
@@ -196,6 +196,8 @@ graphplot(G, names=1:size(G,1), nodesize=0.3, method=:shell, edgelabel=round.(G,
 # +
 using LinearAlgebra, Plots, Graphs
 
+include("static_analysis.jl")
+
 N = 15
 a, b, c = 20.0, 12.0, 1.0  
 α, η = 0.2, 0.05           # Reattività utenti e monopolista
@@ -224,23 +226,6 @@ for t in 1:T
     p .= max.(c + 0.1, p)
     
     history_p[t, :] = p
-end
-
-function get_coords_with_arcs(g)
-    n = nv(g); pos = rand(2, n) .* 2.0
-    for _ in 1:200 
-        for i in 1:n
-            f = zeros(2)
-            for j in 1:n
-                if i == j continue end
-                d = pos[:, i] - pos[:, j]; dist = norm(d) + 0.01
-                f += (d / (dist^4)) * 0.02 # Repulsione forte per distanziare
-                if has_edge(g, i, j) f -= d * dist * 0.4 end # Attrazione elastica
-            end
-            pos[:, i] += clamp.(f, -0.05, 0.05)
-        end
-    end
-    return pos[1, :], pos[2, :]
 end
 
 nx, ny = get_coords_with_arcs(g)
@@ -278,7 +263,7 @@ using Graphs, GraphRecipes
 using Plots
 using SparseArrays
 
-include("myfunctions.jl")
+include("static_analysis.jl")
 
 # Parametri generali
 N = 9
@@ -1018,7 +1003,7 @@ println("Prezzo ottimale: ", round.(p_star, digits=4))
 graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 # -
 
-# ## Continuous-time Dynamics and Optimal Control
+# # <center>Continuous-time Dynamics and Optimal Control</center>
 #
 # Let's consider the adoption dynamics due to the following continuous-time relaxation towards best response:
 #
@@ -1137,8 +1122,10 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 # u(t) &= \dot{p}(t) = -K^{-1} B^\top \left( S(t) z(t) + \nu(t) \right)
 # \end{cases}$$
 
+# ## Simulation
+
 # +
-include("myfunctions.jl")
+include("continuous_control.jl")
 
 𝛿 = 1.0             #time discount
 
@@ -1192,12 +1179,12 @@ g = c*vcat(ones(N), zeros(N));
 #display(A)
 # -
 
-include("myfunctions.jl")
+include("continuous_control.jl")
 g = c*vcat(ones(N), zeros(N));
 S,v = integrate_backward(A, B, d_vec, g, K, N, 𝛿, Δt, steps);
 
 # +
-include("myfunctions.jl")
+include("continuous_control.jl")
 
 #initial condition near NE
 x0 = x_star.*(ones(N)+0.05*rand(N)-0.05*rand(N))
@@ -1254,7 +1241,9 @@ xlabel!("t")
 ylabel!("reward")
 # -
 
-# ## Network Pricing with Asynchronous Noisy Best Response
+# # <center>Discrete-time control</center>
+
+# ## Greedy Bellman Equation with Asynchronous Noisy Best Response
 #
 #
 # ### 1. Consumer Utility and Noisy Best Response 
@@ -1282,9 +1271,9 @@ ylabel!("reward")
 # * With probability $s_i$, the consumer ignores the update opportunity and keeps their current adoption: $x_i(t+1) = x_i(t)$.
 # * With probability $1 - s_i$, the consumer updates their adoption using the NBR distribution: $x_i \sim \mathcal{N}(\mu_i, \sigma^2)$.
 #
-# ### 3. Greedy Bellman Equation
+# ### 3. Greedy Bellman Equation 
 #
-# The monopolist aims to find the optimal price variation $\Delta p_i$ to maximize expected profit at the next macro-time step. For this, we use a greedy Bellman Equation with a time horizon $T=1$. The reward function for the monopolist includes a penalty $\kappa (\Delta p_i)^2$ to prevent rapid changes in prices.
+# The monopolist aims to find the optimal price variation $\Delta p_i$ to maximize expected profit at the next macro-time step. For this, we use a greedy Bellman Equation with a time horizon $H=1$. The reward function for the monopolist includes a penalty $\kappa (\Delta p_i)^2$ to prevent rapid changes in prices.
 # $$\max_{\Delta p_i} \mathbb{E}[r_{i,t}] = \max_{\Delta p_i} \left[ (p_i + \Delta p_i - c) \cdot \mathbb{E}[x_{i, t+1}] - \kappa (\Delta p_i)^2 \right]$$
 #
 # The monopolist estimates the expected response of node $i$ by assuming the rest of the network remains frozen at the current state $x(t)$. So between each marco-time step, consumers adjust their consumption asinchronously according to NBR dynamics, considering the consuption the rest of the network fronzen at the previous macro-time step.
@@ -1307,39 +1296,25 @@ ylabel!("reward")
 # Solving for $\Delta p_i^*$, we obtain
 # $$\Delta p_i^* = \frac{A_i - B_i(p_i - c)}{2(B_i + \kappa)}$$
 
+# ## Simulation
+
 # +
 using LinearAlgebra
 using Distributions
 using Graphs, GraphRecipes, Plots
 
+include("discrete_control.jl")
+
 # ==================================================================
 # 1. SOLUZIONE ESATTA BELLMAN (ORIZZONTE H=1)
 # ==================================================================
-function exact_greedy_bellman(x, p, G, a, b, c, s, kappa)
-    return ((s .* x .+ (1.0 .- s) .* (a .- p .+ G * x) ./ b) .- (1.0 .- s) ./ b .* (p .- c)) ./ (2.0 .* ((1.0 .- s) ./ b .+ kappa))
-end
+
 
 # ==================================================================
 # 2. DINAMICA DEGLI UTENTI: NOISY BEST RESPONSE
 # ==================================================================
 # Simula la reazione degli utenti in base ai nuovi prezzi
-function simulate_users!(x, p, G, a, b, beta, s, steps)
-    N = length(x)
-    
-    for _ in 1:steps
-        i = rand(1:N) # Scegli un utente a caso
-        
-        # Cambia adozione solo se supera la resistenza s
-        if rand() > s[i] 
-            mu = (a - p[i] + dot(G[i, :], x)) / b
-            sigma = sqrt(1.0 / (beta * b))
-            
-            # Estrae la nuova adozione dalla Gaussiana
-            new_x = rand(Normal(mu, sigma))
-            x[i] = max(0.0, new_x) # L'adozione non scende sotto zero
-        end
-    end
-end
+
 
 # ==================================================================
 # MAIN: ESEMPIO DI ESECUZIONE
@@ -1673,91 +1648,29 @@ println("\nNota: Anche fully connected dovrebbe convergere a p* = $((a+c)/2)")
 println("      ma con dinamica greedy su $T step non ci arriva ancora.")
 # -
 
-# ## Greedy Bellman Equation 
+# ## Greedy Bellman Equation with sinchronous deterministic dynamics
 #
 # In this section we aim to solve computationally the greedy Bellman Equation with a finite time horizon $H$, shorter than the time horizon of the original problem $T$, to make it computationnaly tractable. For this we consider a synchronous dynamics where agents at each step set $t$ update their action as
 # $$x_{i,t} = s_i x_{i,t-1} + (1-s_i) x_{i,t}^{NE}$$
 # where $s_i$ is the intrinsic resistance of agent $i$ and $x_{i,t}^{NE} = \frac{a-p_{i,t}+ \sum_j g_{ij} x_{j,t-1}}{b}$ is the Nash Equilibrium level of consumption in which agent $i$ consider the rest of the network still frozen at the previous time step.  
 # Because the dynamics is deterministic, the monopolist can simulate the system and solve the greedy Bellman Equation to choose the best price variation. The instantaneous reward for the monopolist is
-# $$ r_t = 
+# $$ r_t = (p_t-c) \cdot x_t - \kappa (p_t - p_{t-1})^2$$
+# We introduce a time discount for the total reward of the monopolist and we choose exponential time discounting to ensure that the Bellman principle of Optimality is valid and to have time consistency. So the total reward is
+# $$ R = \sum_{t=1}^H \delta^{t-1} r_t$$
+# To solve computationally the Bellman Equation we use the library *Optim*.
 
 # +
 using LinearAlgebra
 using Optim
 
-# ==================================================================
-# SOLUZIONE ESATTA BELLMAN H > 1 CON AZIONI CONTINUE
-# ==================================================================
+include("discrete_control.jl")
 
-# 1. Funzione Obiettivo: calcola il profitto totale scontato per H passi
-function H_step_profit(delta_P_flat, x_init, p_init, G, a, b, c, s, kappa, H, gamma)
-    N = length(x_init)
-    
-    # L'ottimizzatore lavora con vettori "piatti". Lo rimodelliamo in una matrice [N utenti x H passi]
-    delta_P = reshape(delta_P_flat, N, H) 
-    
-    x_curr = copy(x_init)
-    p_curr = copy(p_init)
-    total_profit = 0.0
-    
-    for t in 1:H
-        dp = delta_P[:, t] # Azioni per il turno t
-        
-        # Dinamica Mean-Field (Deterministica)
-        x_NE = (a .- (p_curr .+ dp) .+ G * x_curr) ./ b
-        
-        x_next = s .* x_curr .+ (1.0 .- s) .* x_NE
-        x_next .= max.(0.0, x_next) # Le adozioni non possono essere negative
-        p_next = p_curr .+ dp
-        
-        # Calcolo del profitto
-        reward = sum((p_next .- c) .* x_next .- kappa .* (dp.^2))
-        total_profit += (gamma^(t-1)) * reward
-        
-        # Avanzamento dello stato per il turno successivo
-        x_curr .= x_next
-        p_curr .= p_next
-    end
-    
-    # Restituiamo il profitto col segno meno, perché la libreria Optim MINIMIZZA di default.
-    # Minimizzare -Profitto equivale a Massimizzare il Profitto.
-    return -total_profit 
-end
-
-# 2. Il "Cervello" del Monopolista
-function exact_bellman_continuous(x_init, p_init, G, a, b, c, s, kappa, H; gamma=0.95)
-    N = length(x_init)
-    
-    # Initial guess: partiamo con l'ipotesi di non cambiare nessun prezzo (tutti zeri)
-    # Dimensioni: N utenti * H passi di tempo
-    initial_guess = zeros(N * H)
-    
-    # Creiamo una funzione anonima (closure) che dipenda SOLO da delta_P_flat
-    # (è il formato che richiede la libreria Optim)
-    objective_function(dp) = H_step_profit(dp, x_init, p_init, G, a, b, c, s, kappa, H, gamma)
-    
-    # Lanciamo l'algoritmo di ottimizzazione non vincolata (L-BFGS è perfetto per funzioni quadratiche)
-    result = optimize(objective_function, initial_guess, LBFGS())
-    
-    # Estraiamo la sequenza ottimale trovata
-    optimal_sequence_flat = Optim.minimizer(result)
-    optimal_sequence = reshape(optimal_sequence_flat, N, H)
-    
-    max_profit = -Optim.minimum(result)
-    first_optimal_action = optimal_sequence[:, 1]
-    
-    return max_profit, first_optimal_action
-end
-
-# ==================================================================
-# MAIN: ESECUZIONE 
-# ==================================================================
 N_users = 5
-a_val = 10.0
-b_val = 2.0
-c_val = 1.0
-beta_val = 5.0
-kappa_val = 0.5
+a = 10.0
+b = 2.0
+c = 1.0
+beta = 5.0
+kappa = 0.5
 s_val = fill(0.3, N_users)
 
 G_matrix = rand(N_users, N_users) .* 0.2
@@ -1774,7 +1687,7 @@ println("----------------------\n")
 
 for orizzonte in [1, 2, 5, 10]
     tempo = @elapsed best_val, mossa_ottima = exact_bellman_continuous(
-        x_init, p_init, G_matrix, a_val, b_val, c_val, s_val, kappa_val, orizzonte
+        x_init, p_init, G_matrix, a, b, c, s_val, kappa, orizzonte
     )
     
     println(">>> Risoluzione Esatta Continua per H = $orizzonte")
@@ -1788,62 +1701,22 @@ end
 using Plots
 using Plots.Measures
 
-# ==================================================================
-# 1. FUNZIONE WRAPPER PER LA SIMULAZIONE
-# ==================================================================
-# Inseriamo il ciclo in una funzione così possiamo chiamarlo facilmente per H diversi
-function run_mpc_simulation(x_start, p_start, G, a, b, c, beta, s, kappa, H, T_sim)
-    N = length(x_start)
-    x_hist = zeros(N, T_sim + 1)
-    p_hist = zeros(N, T_sim + 1)
-    
-    x_curr = copy(x_start)
-    p_curr = copy(p_start)
-    
-    x_hist[:, 1] .= x_curr
-    p_hist[:, 1] .= p_curr
-    
-    for t in 1:T_sim
-        # Calcolo mossa ottima continua
-        _, mossa_ottima = exact_bellman_continuous(
-            x_curr, p_curr, G, a, b, c, s, kappa, H
-        )
-        
-        # Applichiamo i nuovi prezzi
-        p_curr .= max.(c, p_curr .+ mossa_ottima)
-        
-        # Reazione della rete
-        simulate_users!(x_curr, p_curr, G, a, b, beta, s, N * 2)
-        
-        # Salvataggio dati
-        x_hist[:, t+1] .= x_curr
-        p_hist[:, t+1] .= p_curr
-    end
-    
-    return x_hist, p_hist
-end
-
-# ==================================================================
-# 2. ESECUZIONE DELLE DUE SIMULAZIONI (Miope vs Lungimirante)
-# ==================================================================
-T_sim = 40 # 40 istanti di tempo sono perfetti per vedere la convergenza
+T = 40
 
 println("Avvio simulazione Miope (H = 1)...")
-x_hist_H1, p_hist_H1 = run_mpc_simulation(
-    x_init, p_init, G_matrix, a_val, b_val, c_val, beta_val, s_val, kappa_val, 1, T_sim
-)
+x_hist_H1, p_hist_H1 = run_simulation(
+    x_init, p_init, G_matrix, a, b, c, beta, s_val, kappa, 1, T)
 
 println("Avvio simulazione Lungimirante (H = 5)...")
-x_hist_H5, p_hist_H5 = run_mpc_simulation(
-    x_init, p_init, G_matrix, a_val, b_val, c_val, beta_val, s_val, kappa_val, 5, T_sim
-)
+x_hist_H5, p_hist_H5 = run_simulation(
+    x_init, p_init, G_matrix, a, b, c, beta, s_val, kappa, 5, T)
 println("Simulazioni completate. Generazione grafici...")
 
 # ==================================================================
-# 3. PLOTTING COMPARATIVO
+# PLOTTING COMPARATIVO
 # ==================================================================
 nodes_to_plot = [1, 2, 3]
-time_steps = 1:(T_sim + 1)
+time_steps = 1:(T + 1)
 plot_size = (800, 450) 
 margin_sinistro = 15mm
 
@@ -1878,37 +1751,38 @@ end
 #
 # ### 1. Discrete State-Action Space
 #
-# To use reinforcement learning, we need discrete state-action space, but in our problem both consumption and prices are continuous. To implement *SARSA* algorithm, we discretize this state-action space in bins according to the parameters of the problem and the structure of the graph, assuming always Noisy Best Response for consumers.
+# To use reinforcement learning, we need discrete state-action space, but in our problem both consumption and prices are continuous. To implement *SARSA* algorithm, we discretize this state-action space in bins according to the parameters of the problem and the structure of the graph, assuming Noisy Best Response for consumers.
 #
 # Let $x_i \in \mathbb{R}^+$ be the continuous state of user $i$ and the price variation $\Delta p_i \in \mathbb{R}$ the continuous action. We map these continuous variables into finite discrete sets $\mathcal{S}$ and $\mathcal{A}$.
 #
-# To prevent rapid changes in price, we bound the maximum price variation $\Delta p_{max}$ between $c$, the production cost, and $a$, that is the intrinsic utility parameter. 
+# To prevent rapid changes in price, we bound the maximum price variation $\Delta p_{max}$, so that the new $p$ is bounded between $c$, the production cost, and $a$, the intrinsic utility parameter. 
 # We define a discrete set of $K_a$ uniformly spaced actions
 # $$\mathcal{A} = \{a_1, a_2, \dots, a_{K_a}\}$$
 # where $a_1 = -\Delta p_{max}$ and $a_{K_a} = +\Delta p_{max}$. 
 #
-# To bound the consuption level of the agents, we consider the Nash equilibrium consumption of agent $i$
-# $$ x_i^* = \frac{a - p_i}{b} + \frac{1}{b} \sum_j g_{ij} x_j $$
+# To bound the consumption level of the agents, we consider the Nash equilibrium consumption 
+# $$ x_i^* = \frac{a - p_i}{b} + \frac{1}{b} \sum_j g_{ij} x_j^* $$
 # Because the Noisy Best Response is equivalent to a Gaussian distribution, at $99.7\%$ the consumption is bounded by
 # $$x_i \le \mu_i + 3\sigma = \mu_i + \frac{3}{\sqrt{\beta b}}$$
-# We define $g_{max} = \max_i \sum_j g_{ij}$ be the maximum weighted in-degree of the network. To maximize $\mu_i$, we consider the minimum price $p_i=c$ and maximum positive externality $g_{max} x_{max} $
+# We define $g_{max} = \max_i \sum_j g_{ij}$ be the maximum weighted out-degree of the network. To find an upper bound for $\mu_i$, we consider the minimum price $p_i=c$ and maximum positive externality $g_{max} x_{max} $
 # $$\mu_{max} \le \frac{a - c}{b} + \frac{g_{max}}{b} x_{max}$$
 # So the upper bound for $x_i$ is
-# $$x_{max} \le \frac{a - c}{b} + \frac{g_{max}}{b} x_{max} + \frac{3}{\sqrt{\beta b}} \\
-# x_{max} \le \frac{\frac{a - c}{b} + \frac{3}{\sqrt{\beta b}}}{1 - \frac{g_{max}}{b}}$$
+# $$x_{max} = \frac{a - c}{b} + \frac{g_{max}}{b} x_{max} + \frac{3}{\sqrt{\beta b}} \\
+# x_{max} = \frac{\frac{a - c}{b} + \frac{3}{\sqrt{\beta b}}}{1 - \frac{g_{max}}{b}}$$
 #
 # We then partition the interval $[0, x_{max}]$ into $K_s$ equally divided into bins and the continuous state $x_i$ is mapped to a discrete state index $S_i \in \{1, \dots, K_s\}$.
 #
 # ### 2. Reward Function
 #
-# The objective of the monopolist at time $t$ for user $i$ is the maximization of the profit. The  reward $r_{i,t}$ is 
+# The objective of the monopolist at time $t$ for user $i$ is the maximization of the profit. The reward $r_{i,t}$ is 
 # $$r_{i,t} = (p_{i,t} - c)x_{i,t} - \kappa (\Delta p_{i,t})^2$$
+# and for total reward we use an exponential discounting.
 #
 # ### 3. SARSA Learning Algorithm
 #
-# To learn the optimal pricing strategy, the monopolist employs *SARSA*. For each user $i$, the monopolist uses a Q-value function (discretized) $Q_i(S, A)$ representing the expected discounted future return of taking action $A$ in state $S$ and following the current policy.
+# To learn the optimal strategy for the monopolist, we use *SARSA* algorithm. For each user $i$, the monopolist uses a Q-value function (discretized) $Q_i(S, A)$ representing the expected discounted future return of taking action $A$ in state $S$ and following the current policy. 
 #
-# Action selection is governed by an $\epsilon$-greedy policy to balance exploration and exploitation
+# Action is selected by using an $\epsilon$-greedy policy to balance exploration and exploitation
 # $$
 # A_t = 
 # \begin{cases} 
@@ -1928,110 +1802,18 @@ end
 # +
 using LinearAlgebra
 using Distributions
-using StatsBase
+using StatsBase 
 using Plots
 using Graphs
 
-# ==================================================================
-# 1. FUNZIONE DI SUPPORTO: MAPPATURA DELLO STATO
-# ==================================================================
-function get_state_idx(x_val, x_max, K_s)
-    bin_width = x_max / K_s
-    idx = ceil(Int, x_val / bin_width)
-    return clamp(idx, 1, K_s)
-end
+include("discrete_control.jl")
 
-# ==================================================================
-# 2. DINAMICA DEGLI UTENTI: ASINCRONA CON ESPONENZIALE
-# ==================================================================
-function simulate_users!(x, p, G, a, b, beta, s, steps)
-    N = length(x)
-    x_candidati = 0.0:0.05:20.0 
-    
-    for _ in 1:steps
-        i = rand(1:N) 
-        
-        if rand() > s[i] 
-            esternalita = dot(G[i, :], x)
-            U_candidati = [a * v - (b / 2.0) * v^2 + esternalita * v - p[i] * v for v in x_candidati]
-            
-            max_U = maximum(U_candidati)
-            pesi = exp.(beta .* (U_candidati .- max_U))
-            
-            x[i] = sample(x_candidati, Weights(pesi))
-        end
-    end
-end
-
-# ==================================================================
-# 3. ALGORITMO SARSA (Costante Epsilon-Greedy)
-# ==================================================================
-function train_sarsa!(x, p, G, a, b, c, beta, s, kappa, actions, x_max, K_s; 
-                      episodes=500, steps_per_episode=50, alpha=0.1, gamma=0.95, epsilon=0.1)
-    
-    N = length(x)
-    K_a = length(actions)
-    
-    Q = zeros(N, K_s, K_a)
-    
-    total_steps = episodes * steps_per_episode
-    x_history = zeros(N, total_steps + 1)
-    p_history = zeros(N, total_steps + 1)
-    
-    x_history[:, 1] .= x
-    p_history[:, 1] .= p
-    time_idx = 2
-    
-    for ep in 1:episodes
-        p_current = copy(p) 
-        
-        S = [get_state_idx(x[i], x_max, K_s) for i in 1:N]
-        A = [rand() < epsilon ? rand(1:K_a) : argmax(Q[i, S[i], :]) for i in 1:N]
-        
-        for t in 1:steps_per_episode
-            # Applichiamo i prezzi
-            delta_p = [actions[A[i]] for i in 1:N]
-            p_current .= max.(c, p_current .+ delta_p)
-            
-            # Reazione degli utenti
-            simulate_users!(x, p_current, G, a, b, beta, s, N * 2)
-            
-            # Salviamo la storia
-            x_history[:, time_idx] .= x
-            p_history[:, time_idx] .= p_current
-            time_idx += 1
-            
-            # Osserviamo il nuovo stato e scegliamo la nuova azione
-            S_next = [get_state_idx(x[i], x_max, K_s) for i in 1:N]
-            A_next = [rand() < epsilon ? rand(1:K_a) : argmax(Q[i, S_next[i], :]) for i in 1:N]
-            
-            # Aggiornamento Q-Table (SARSA)
-            for i in 1:N
-                reward = (p_current[i] - c) * x[i] - kappa * (delta_p[i]^2)
-                
-                Q_old = Q[i, S[i], A[i]]
-                Q_next = Q[i, S_next[i], A_next[i]]
-                
-                Q[i, S[i], A[i]] = Q_old + alpha * (reward + gamma * Q_next - Q_old)
-            end
-            
-            S .= S_next
-            A .= A_next
-        end
-    end
-    
-    return Q, x_history, p_history
-end
-
-# ==================================================================
-# MAIN: SETUP E ESECUZIONE
-# ==================================================================
 N_users = 5
-a_val = 10.0
-b_val = 2.0
-c_val = 1.0
-beta_val = 5.0
-kappa_val = 0.5
+a = 10.0
+b = 2.0
+c = 1.0
+beta = 5.0
+kappa = 0.5
 s_val = fill(0.3, N_users)
 
 G_matrix = rand(N_users, N_users) .* 0.2
@@ -2044,16 +1826,16 @@ K_s = 5
 K_a = 5
 
 g_max = maximum(sum(G_matrix, dims=2))
-x_max = ((a_val - c_val) / b_val) * (1.0 + g_max) + (3.0 / sqrt(beta_val * b_val))
+x_max = (((a - c) / b) + (3.0 / sqrt(beta * b))) / (1.0 - (g_max / b))
 
-delta_p_max = (a_val - c_val) * 0.10
+delta_p_max = (a - c) * 0.10
 actions = collect(range(-delta_p_max, delta_p_max, length=K_a))
 
 println("Limite x_max calcolato: ", round(x_max, digits=2))
 println("Azioni Δp calcolate:    ", round.(actions, digits=3))
 
 println("\nAvvio addestramento SARSA (Epsilon fisso a 0.1)...")
-Q_learned, x_history, p_history = train_sarsa!(x_init, p_init, G_matrix, a_val, b_val, c_val, beta_val, s_val, kappa_val, actions, x_max, K_s, epsilon=0.1)
+Q_learned, x_history, p_history = train_sarsa!(x_init, p_init, G_matrix, a, b, c, beta, s_val, kappa, actions, x_max, K_s, epsilon=0.1)
 
 println("Addestramento completato.")
 # -
