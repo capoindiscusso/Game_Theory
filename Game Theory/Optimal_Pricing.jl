@@ -9,9 +9,9 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: Julia 1.10.5
+#     display_name: Julia 1.12
 #     language: julia
-#     name: julia-1.10
+#     name: julia-1.12
 # ---
 
 # **Author:** Agenti Interagenti  
@@ -32,7 +32,7 @@
 #
 # $$R(p) = \sum_i (p_i - c)x_i$$
 #
-# where $c \geq 0$ is the marginal cost of producing the good. We assume $a>c$ to ensure positive demand in isolation, and impose $b > \sum_j g_{ij} \quad \forall i$ to guarantee a unique, stable equilibrium.
+# where $c \geq 0$ is the marginal cost of producing the good. We assume $a>c$ to ensure positive demand in isolation, and impose $b > \sum_j g_{ij} \ \forall i$ to guarantee a unique, stable equilibrium.
 #
 # ### 1. Consumer Best Response
 #
@@ -50,8 +50,8 @@
 # x^* &= \left(I - \frac{1}{b}G\right)^{-1} \frac{a𝟙 - p}{b}
 # \end{aligned}$$
 #
-# where $𝟙$ is a $N$-dimensional vector of all $1$.
-#
+# where $𝟙$ is a $N$-dimensional vector of all $1$. 
+# Raga per me questo align sotto qui si può anche togliere non l'ho capito molto
 # $$\begin{aligned}
 #     \left(I - \frac{1}{b}G\right)x &= \frac{a𝟙 - p}{b} \\
 #     y &= \frac{a𝟙 - p}{b} \implies \left(I - \frac{1}{b}G\right)x = y \\
@@ -59,26 +59,26 @@
 #     x^* &= \tilde{x}_1 v_1 + \sum_{k \geq 2} \tilde{x}_k v_k
 # \end{aligned}$$
 #
-# To have an unique and stable equilibrium, $I - \frac{1}{b}G$ has to be invertible. This can be proved defining the best-response operator:
+# To have an unique and stable equilibrium, $I - \frac{1}{b}G$ has to be invertible. This can be proved defining the best-response operator
 #
 # $$T(x) = \frac{a𝟙 - p}{b} + \frac{1}{b} G x$$
 #
-# that gives the best response given the action vector $x$. If this operator is contractive, the best-response dynamics converges to an unique, stable equilibrium. Using the norm:
+# that gives the best response given the action vector $x$. If this operator is contractive, the best-response dynamics converges to an unique, stable equilibrium. Using the norm
 #
 # $$\begin{aligned}
 # ||x||_\infty &\doteq \max_i |x_i| \\
 # ||A||_\infty &\doteq \max_i \sum_j |A_{ij}|
 # \end{aligned}$$
 #
-# the operator $T(x)$ is contractive if $\exists k \in [0,1)$ such that $||T(x) - T(y)||_\infty \leq k||x-y||_\infty$, $\forall x,y$, and this is true if:
+# the operator $T(x)$ is contractive if $\exists k \in [0,1)$ such that $||T(x) - T(y)||_\infty \leq k||x-y||_\infty$, $\forall x,y$, and this is true if
 #
 # $$ \|T(x) - T(y)\|_\infty = \| \frac{1}{b}G(x-y) \|_\infty \leq \frac{1}{b} \|G\|_\infty \cdot \|x-y\|_\infty $$
 #
-# where we used the property $||Ax||_\infty \leq ||A||_\infty \cdot ||x||_\infty$. Identifying $\frac{1}{b} ||G||_\infty$ with $k$, $0 \leq k < 1$ is equivalent to the condition:
+# where we used the property $||Ax||_\infty \leq ||A||_\infty \cdot ||x||_\infty$. Identifying $\frac{1}{b} ||G||_\infty$ with $k$, $0 \leq k < 1$ is equivalent to the condition
 #
 # $$b > \sum_j g_{ij} \quad \forall i$$
 #
-# For Perron-Frobenius theorem, we have that $G$ is invertible because its elements are non-negative, and its spectral radius satisfies:
+# For Perron-Frobenius theorem, we have that $G$ is invertible because its elements are non-negative, and its spectral radius satisfies
 #
 # $$\min_i \sum_j g_{ij} \leq \rho(G) \leq \max_i \sum_j g_{ij}$$
 #
@@ -86,14 +86,14 @@
 #
 # ### 2. Optimal Pricing
 #
-# If agents consume according to the Nash equilibrium, defining $M = (I - \frac{1}{b}G)^{-1}$, the revenue for the monopolist is:
+# If agents consume according to the Nash equilibrium, defining $M = (I - \frac{1}{b}G)^{-1}$, the revenue for the monopolist is
 #
 # $$\begin{aligned}
 # R(p) &= (p - c𝟙)^\top x^* = (p - c𝟙)^\top M \frac{a𝟙 - p}{b}\\
 # &= \frac{1}{b} \left[ -p^\top M p + p^\top M 𝟙 a + 𝟙^\top M p c - 𝟙^\top M 𝟙 ac \right]
 # \end{aligned}$$
 #
-# To maximize $R(p)$ it's sufficient to impose $\nabla_p R = 0$:
+# To maximize $R(p)$ it's sufficient to impose $\nabla_p R = 0$
 #
 # $$\begin{aligned}
 # \nabla_p R &= -(M + M^\top)p^* + M𝟙a + M^\top𝟙c = 0 \\
@@ -101,13 +101,13 @@
 # &= c𝟙 + (a-c)(M + M^\top)^{-1} M 𝟙
 # \end{aligned}$$
 #
-# From the definition of $M$, if $b > \sum_j g_{ij} \quad \forall i$:
+# From the definition of $M$, if $b > \sum_j g_{ij} \ \forall i$
 #
 # $$M = \left(I - \frac{1}{b}G\right)^{-1} = \sum_{i=0}^\infty \left(\frac{1}{b}G\right)^i = I + \frac{1}{b}G + \frac{1}{b^2}G^2 + \dots$$
 #
-# The element $M_{ij}$ represents the total influence (both direct and indirect) that agent $j$ exerts on agent $i$. In this expansion, the term $(G^k)_{ij}$ counts the number of paths of length $k$ between node $j$ and node $i$. The scalar $(1/b)^k$ discounts the impact of longer connections and so $M_{ij}$ represents the global influence of $j$ on $i$.
+# The element $M_{ij}$ represents the total influence (both direct and indirect) that agent $j$ exerts on agent $i$. In this expansion, the term $(G^k)_{ij}$ counts, with unitary link wieghts, the number of paths of length $k$ between node $j$ and node $i$. The scalar $(1/b)^k$ discounts the impact of longer connections and so $M_{ij}$ represents the global influence of $j$ on $i$.
 #
-# Interestingly, we notice that when agents are linked through an undirected network, i.e. when $G$ is symmetric, $M$ is symmetric as well, namely $M = M^\top$, so that the global influence of $j$ on $i$ is equal to the global influence of $i$ on $j$. This implies that in such cases the expression for the optimal price vector is extremely simplified:
+# Interestingly, we notice that when agents are linked through an undirected network, i.e. when $G$ is symmetric, $M$ is symmetric as well, namely $M = M^\top$, so that the global influence of $j$ on $i$ is equal to the global influence of $i$ on $j$. This implies that in such cases the expression for the optimal price vector is extremely simplified
 #
 # $$\begin{aligned}
 # p^* &= c𝟙 + (M + M^\top)^{-1} M 𝟙 (a-c) \\
@@ -118,7 +118,7 @@
 #
 # as it does not depend on the network topology and all its elements have the same value, that corresponds to the monopolist fixing the same optimal price for each agent. We can than interpret it as a sort of basis or unbiased price. We shall see however that, fixed such a price vector, this does not imply that the usage of each agent in the Nash equilibrium is the same, as it still depends on the network.
 #
-# Furthermore, by simply looking at the general expression of $p^* = c𝟙 + (M + M^\top)^{-1} M 𝟙 (a-c)$, we can establish a link between the optimal price vector and the Katz centrality. We recall that, given the adjacency matrix $G$, $\lambda_G$ being its larger eigenvalue, Katz centrality measures the "influence" or "importance" of each node and it's defined as:
+# Furthermore, by simply looking at the general expression of $p^* = c𝟙 + (M + M^\top)^{-1} M 𝟙 (a-c)$, we can establish a link between the optimal price vector and the Katz centrality. We recall that, given the adjacency matrix $G$, $\lambda_G$ being its larger eigenvalue, Katz centrality measures the "influence" or "importance" of each node and it's defined as
 #
 # $$\begin{aligned}
 # z &= (1-\beta) \lambda_G^{-1} G z + \beta \mu \\
@@ -127,7 +127,7 @@
 #
 # where $\beta \in [0,1]$ and $\mu \in \mathbb{R}^N$ is the intrinsic centrality of each node. In our problem this is very similar to the term $M𝟙(a-c)$, so in the expression of the optimal price we can interprete the term $c𝟙$ as a basis price for everyone, plus the term $(M+M^\top)^{-1}M𝟙(a-c)$, that is proportional to the difference between the intrinsic utility parameter $a$ and the marginal cost $c$ and where $M𝟙$ measures how much the agents are influenced by other agents in the network. We can conclude that the agents that are more influenced by others will get higher prices, while agents that have a strong influence will have lower prices. We'll deepen this consideration studying the problem on different networks in the next section.
 #
-# We can rewrite the best response vector $x^*$ assuming that the monopolist applies optimal prices, i.e. in an overall equilibrium condition:
+# We can rewrite the best response vector $x^*$ assuming that the monopolist applies optimal prices, i.e. in an overall equilibrium condition
 #
 # $$\begin{aligned}
 # x^* &= M \frac{a𝟙 - p^*}{b} \\
@@ -135,7 +135,7 @@
 # &= \frac{a-c}{b}\left( I - M (M + M^\top)^{-1} \right)  M 𝟙
 # \end{aligned}$$
 #
-# If the graph is undirected:
+# If the graph is undirected
 #
 # $$x^* = M \frac{a𝟙 - p^*}{b} = M\frac{a𝟙 - \frac{1}{2}(a+c)𝟙}{b} = \frac{1}{2}\frac{a-c}{b} M 𝟙$$
 #
@@ -1161,7 +1161,7 @@ k = 1.0
 K = k*diagm(ones(N))
 
 # Assicuriamoci che G sia una matrice e b uno scalare
-G_matrix = Matrix(g) # Se 'g' è il grafo creato con Graphs.jl
+G_matrix = G # Se 'g' è il grafo creato con Graphs.jl
 block_top_left = Λ * ( (G_matrix ./ b) - I )
 
 block_top_left = Λ * (G_matrix/b - I)  
@@ -1193,7 +1193,8 @@ g = c*vcat(ones(N), zeros(N));
 # -
 
 include("myfunctions.jl")
-S,v = integrate_backward(A, B, d_vec, G, K, N, 𝛿, Δt, steps);
+g = c*vcat(ones(N), zeros(N));
+S,v = integrate_backward(A, B, d_vec, g, K, N, 𝛿, Δt, steps);
 
 # +
 include("myfunctions.jl")
@@ -1314,28 +1315,8 @@ using Graphs, GraphRecipes, Plots
 # ==================================================================
 # 1. SOLUZIONE ESATTA BELLMAN (ORIZZONTE H=1)
 # ==================================================================
-# Calcola la variazione di prezzo ottima passando direttamente i parametri
 function exact_greedy_bellman(x, p, G, a, b, c, s, kappa)
-    
-    # Esternalità ricevuta da ogni nodo
-    esternalita = G * x
-    
-    # Best response senza variazione di prezzo
-    tilde_x = (a .- p .+ esternalita) ./ b
-    
-    # A: adozione attesa se NON cambiassimo il prezzo
-    A = s .* x .+ (1.0 .- s) .* tilde_x
-    
-    # B: sensibilità dell'adozione rispetto al cambio di prezzo
-    B = (1.0 .- s) ./ b
-    
-    # Formula esatta della variazione di prezzo (derivata = 0)
-    numeratore = A .- B .* (p .- c)
-    denominatore = 2.0 .* (B .+ kappa)
-    
-    delta_p_ottimo = numeratore ./ denominatore
-    
-    return delta_p_ottimo
+    return ((s .* x .+ (1.0 .- s) .* (a .- p .+ G * x) ./ b) .- (1.0 .- s) ./ b .* (p .- c)) ./ (2.0 .* ((1.0 .- s) ./ b .+ kappa))
 end
 
 # ==================================================================
@@ -1350,12 +1331,11 @@ function simulate_users!(x, p, G, a, b, beta, s, steps)
         
         # Cambia adozione solo se supera la resistenza s
         if rand() > s[i] 
-            esternalita = dot(G[i, :], x)
-            mu_i = (a - p[i] + esternalita) / b
+            mu = (a - p[i] + dot(G[i, :], x)) / b
             sigma = sqrt(1.0 / (beta * b))
             
             # Estrae la nuova adozione dalla Gaussiana
-            new_x = rand(Normal(mu_i, sigma))
+            new_x = rand(Normal(mu, sigma))
             x[i] = max(0.0, new_x) # L'adozione non scende sotto zero
         end
     end
@@ -1376,7 +1356,7 @@ kappa = 0.5
 s = fill(0.3, N)           # vettore resistenze uniforme
 
 # ==================================================================
-# Costruzione di un grafo orientato con distribuzione dei gradi eterogenea
+# Costruzione di un grafo orientato
 # ==================================================================
 # utilizziamo una matrice di adiacenza pesata
 G = zeros(Float64, N, N)
@@ -1398,7 +1378,7 @@ plt = graphplot(g, names=1:N, arrowsize=0.3, nodesize=0.3, method=:spring,
 # mostriamo il plot teoricante
 display(plt)
 
-println("Grafo orientato con distribuzione dei gradi eterogenea")
+println("Grafo orientato")
 println("Out-degrees: ", sum(G .> 0, dims=2)[:])
 println("In-degrees:  ", sum(G .> 0, dims=1)[:])
 
@@ -1695,7 +1675,11 @@ println("      ma con dinamica greedy su $T step non ci arriva ancora.")
 
 # ## Greedy Bellman Equation 
 #
-# In this section we aim to solve computationally the greedy Bellman Equation with a finite time horizon, shorter than the time horizon of the original problem to make it computationnaly tractable.
+# In this section we aim to solve computationally the greedy Bellman Equation with a finite time horizon $H$, shorter than the time horizon of the original problem $T$, to make it computationnaly tractable. For this we consider a synchronous dynamics where agents at each step set $t$ update their action as
+# $$x_{i,t} = s_i x_{i,t-1} + (1-s_i) x_{i,t}^{NE}$$
+# where $s_i$ is the intrinsic resistance of agent $i$ and $x_{i,t}^{NE} = \frac{a-p_{i,t}+ \sum_j g_{ij} x_{j,t-1}}{b}$ is the Nash Equilibrium level of consumption in which agent $i$ consider the rest of the network still frozen at the previous time step.  
+# Because the dynamics is deterministic, the monopolist can simulate the system and solve the greedy Bellman Equation to choose the best price variation. The instantaneous reward for the monopolist is
+# $$ r_t = 
 
 # +
 using LinearAlgebra
@@ -1720,13 +1704,9 @@ function H_step_profit(delta_P_flat, x_init, p_init, G, a, b, c, s, kappa, H, ga
         dp = delta_P[:, t] # Azioni per il turno t
         
         # Dinamica Mean-Field (Deterministica)
-        esternalita = G * x_curr
-        tilde_x = (a .- p_curr .+ esternalita) ./ b
+        x_NE = (a .- (p_curr .+ dp) .+ G * x_curr) ./ b
         
-        A_term = s .* x_curr .+ (1.0 .- s) .* tilde_x
-        B_term = (1.0 .- s) ./ b
-        
-        x_next = A_term .- B_term .* dp
+        x_next = s .* x_curr .+ (1.0 .- s) .* x_NE
         x_next .= max.(0.0, x_next) # Le adozioni non possono essere negative
         p_next = p_curr .+ dp
         
@@ -1770,7 +1750,7 @@ function exact_bellman_continuous(x_init, p_init, G, a, b, c, s, kappa, H; gamma
 end
 
 # ==================================================================
-# MAIN: ESECUZIONE VELOCISSIMA
+# MAIN: ESECUZIONE 
 # ==================================================================
 N_users = 5
 a_val = 10.0
@@ -1791,7 +1771,7 @@ println("Adozioni x: ", round.(x_init, digits=2))
 println("Prezzi   p: ", round.(p_init, digits=2))
 println("----------------------\n")
 
-# Ora possiamo testare orizzonti lunghissimi senza paura!
+
 for orizzonte in [1, 2, 5, 10]
     tempo = @elapsed best_val, mossa_ottima = exact_bellman_continuous(
         x_init, p_init, G_matrix, a_val, b_val, c_val, s_val, kappa_val, orizzonte
