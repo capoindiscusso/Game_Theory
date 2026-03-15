@@ -14,7 +14,7 @@
 #     name: julia-1.12
 # ---
 
-# **Author:** Agenti Interagenti  
+# **Author:** Emanuele Barbera, Marco Ghirardo, Matteo Grandinetti, Martino Pasqualotto  
 # **Date:** March 2026  
 #
 # # <center>Optimal Pricing on Network</center>
@@ -51,13 +51,14 @@
 # \end{aligned}$$
 #
 # where $𝟙$ is a $N$-dimensional vector of all $1$. 
-# Raga per me questo align sotto qui si può anche togliere non l'ho capito molto
+# Raga per me questo align sotto qui si può anche togliere non l'ho capito molto  ##############
 # $$\begin{aligned}
 #     \left(I - \frac{1}{b}G\right)x &= \frac{a𝟙 - p}{b} \\
 #     y &= \frac{a𝟙 - p}{b} \implies \left(I - \frac{1}{b}G\right)x = y \\
 #     \tilde{x}_1 &= \frac{\tilde{y}_1}{1 - \frac{\lambda_1}{b}} \\
 #     x^* &= \tilde{x}_1 v_1 + \sum_{k \geq 2} \tilde{x}_k v_k
-# \end{aligned}$$
+# \end{aligned}$$  
+#  ################
 #
 # To have an unique and stable equilibrium, $I - \frac{1}{b}G$ has to be invertible. This can be proved defining the best-response operator
 #
@@ -256,163 +257,6 @@ price_labels = [string("N", i, ":\n", round(p[i], digits=1)) for i in 1:N]
 annotate!(p2, [(nx[i], ny[i] + 0.18, text(price_labels[i], 7, :black, :center, :bold)) for i in 1:N])
 
 plot(p1, p2, layout=(2,1), size=(850, 1100), margin=10Plots.mm)
-
-# +
-using Random, Distributions, LinearAlgebra
-using Graphs, GraphRecipes
-using Plots
-using SparseArrays
-
-include("static_analysis.jl")
-
-# Parametri generali
-N = 9
-a = 15.0
-b = 20.0
-c = 3.0
-
-α = 1e-5           # learning rate
-γ = 1.0            # discount factor (per reward)
-ξ = 0.9            # discount factor (per learning rate)
-n_episodes = 100
-T = 300
-
-Λ = 1.0*diagm(ones(N)) #.+ 0.5*rand(N)
-#g = createGraphStar(N)
-g = createGraphFullyConnected(N)/N
-#g = createGraphStarNoLeavesLinks(N)  # ma sta funzione esiste ????
-checkParameters(g, a, b, c)
-
-
-# Parametri della policy
-# θ = [θ_μ0, θ_μ1, θ_μ2, θ_log(σ0), θ_log(σ1), θ_log(σ2)]
-# inizializzare μ = 0 e log(σ) piccoli e negativi
-θ = hcat(zeros(N,4), fill(-3.0,N,4))  # N x 8
-
-
-# Funzione reward
-reward(x,p) = sum((p[i] - c)*x[i] for i in 1:N)
-
-# Simulazione episodio
-function run_episode(θ)
-    x = collect(range(0,2.0,length=N))
-    states = Vector{Vector{Float64}}()
-    actions = Vector{Vector{Float64}}()
-    rewards = Float64[]
-
-    for t in 1:T
-        μ = zeros(N)
-        σ = zeros(N)
-        p = zeros(N)
-
-        for k in 1:N
-            μ[k] = θ[k,1] + θ[k,2]*x[k] + θ[k,3]*x[k]^2 + θ[k,4]*sum(g[k, j] for j in 1:N)
-            σ[k] = exp(θ[k,5] + θ[k,6]*x[k] + θ[k,7]*x[k]^2 + θ[k,8]*sum(g[k, j] for j in 1:N))  # parametrizzazione esponenziale garantisce σ>0 sempre
-            σ[k] = max(σ[k], 1e-4)                              # clipping per sicurezza
-            p[k] = rand(LogNormal(μ[k], σ[k]))
-        end
-
-        push!(states, copy(x))
-        push!(actions, copy(p))
-        push!(rewards, reward(x,p))
-
-        # prossimo stato
-        for i in 1:N
-            x[i] = x[i] + Λ[i,i]*((a-p[i])/b + sum(g[i,j]*x[j] for j in 1:N)/b - x[i])
-            #x[i] = max(x[i], 1e-3)
-        end
-    end
-
-    return states, actions, rewards
-end
-
-# Gradiente log-policy
-function grad_log_pi(x,p,θ)
-    grad = zeros(N,8)
-
-    for k in 1:N
-        μ_k = θ[k,1] + θ[k,2]*x[k] + θ[k,3]*x[k]^2 + θ[k,4]*sum(g[k, j] for j in 1:N)
-        logσ_k = θ[k,5] + θ[k,6]*x[k] + θ[k,7]*x[k]^2 + θ[k,8]*sum(g[k, j] for j in 1:N)
-        σ_k = exp(logσ_k)
-
-        # gradiente rispetto a parametri di μ
-        coeff_mu = (log(p[k]) - μ_k) / σ_k^2
-        grad[k,1] = coeff_mu
-        grad[k,2] = coeff_mu * x[k]
-        grad[k,3] = coeff_mu * x[k]^2
-        grad[k,4] = coeff_mu * sum(g[k, :])
-
-        # gradiente rispetto a parametri di log(σ)
-        coeff_logσ = ((log(p[k]) - μ_k)^2 / σ_k^2) - 1
-        grad[k,5] = coeff_logσ
-        grad[k,6] = coeff_logσ * x[k]
-        grad[k,7] = coeff_logσ * x[k]^2
-        grad[k,8] = coeff_logσ * sum(g[k, :])
-    end
-
-    # Clipping
-    grad[:,1:4] = clamp.(grad[:,1:4], -0.2, 0.2)  # μ
-    grad[:,5:8] = clamp.(grad[:,5:8], -0.05, 0.05) # logσ
-
-    return grad
-end
-
-# REINFORCE
-for episode in 1:n_episodes
-    states, actions, rewards = run_episode(θ)
-
-    # Calcola return cumulativo G_t
-    G = zeros(T)
-    for t in 1:T
-        G[t] = sum((γ .^ (0:(T-t))) .* rewards[t:T])    # Reward cumulativo da ogni stato dell'episodio in poi
-        G[t] = G[t] / maximum(abs.(G[t:T]))   # scala [-1,1]
-    end
-
-    # Aggiorna θ passo passo con clipping
-    for t in 1:T
-        grad = grad_log_pi(states[t], actions[t], θ)
-        #baseline = mean(G)
-        θ += α * (G[t]) * grad
-    end
-end
-
-println("θ finale dopo training:\n", θ)
-
-
-# Generazione singolo episodio
-x = collect(range(0,5,length=N))   # stato iniziale randomico
-T_plot = 200                        # lunghezza episodio per il plot
-actions_history = zeros(N, T_plot)  # prezzi ad ogni passo
-states_history = zeros(N, T_plot)  # stati ad ogni passo
-
-for t in 1:T_plot
-    μ = zeros(N)
-    σ = zeros(N)
-    p = zeros(N)
-    for k in 1:N
-        μ[k] = θ[k,1] + θ[k,2]*x[k] + θ[k,3]*x[k]^2
-        σ[k] = exp(θ[k,4] + θ[k,5]*x[k] + θ[k,6]*x[k]^2)
-        p[k] = rand(LogNormal(μ[k], σ[k]))
-    end
-    actions_history[:, t] = p   # salva le azioni
-    states_history[:, t] = x    # salva gli stati
-
-    # Update stato
-    for i in 1:N
-        x[i] = x[i] + Λ[i,i]*((a-p[i])/b + sum(g[i,j]*x[j] for j in 1:N)/b - x[i])
-        x[i] = x[i] = max(x[i], 1e-3)
-    end
-end
-
-# Plot dei prezzi per ciascun giocatore
-
-plot()
-for i in 1:N
-    plot!(1:T_plot, actions_history[i, :], label="Giocatore $i", lw=2)
-end
-xlabel!("Time step")
-ylabel!("Prezzo")
-title!("Evoluzione del prezzo per ciascun giocatore")
 # -
 
 # ##  <center>Analytical Results and Simulations on Different Networks</center>
@@ -1003,17 +847,175 @@ println("Prezzo ottimale: ", round.(p_star, digits=4))
 graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 # -
 
+# ## <center>Multiple Nash Equilibria<center>
+#
+# We've already computed the Nash Equilibrium value for the consumers
+# $$x^* = \frac{a𝟙 - p}{b} + \frac{1}{b} G x^*$$
+# that is, if $I - \frac{1}{b}G$ is invertible
+# $$x^* = \left(I - \frac{1}{b}G\right)^{-1} \frac{a𝟙 - p}{b}$$
+# We now analyze 2 different situations.
+# ### First case: $I - \frac{1}{b}G$ not invertible
+# We know that a matrix $A \in \mathbb{R}^{N\times N}$ is invertible if and only if $\det(A) \neq 0$. Since the eigenvalues of the matrix $\left(I - \frac{1}{b}G\right)$ are given by $1 - \frac{\lambda_i}{b}$ (where $\lambda_i$ are the eigenvalues of $G$), the determinant $\det\left(I - \frac{1}{b}G\right) = 0$ if and only if there exists an eigenvalue of $G$ exactly equal to $b$. In this case, depending on the value of $p$, the system
+# $$(I -\frac{1}{b} G) x^* = \frac{a𝟙 - p}{b}$$
+# could have $0$ or infinite solutions, according to the Fredholm theorem.  
+# The Fredholm theorem states that a linear system $Ax=y$, where $A \in \mathbb{R}^{N \times N}$, $x,y \in \mathbb{R}^N$ and $\det(A)=0$, admits a solution if and only if the constant vector $y$ is orthogonal to the left eigenvector of the matrix $A$ corrisponding to the eigenvalue $0$.  
+# If $x_1$ is a solution to the system $Ax=y$, all vector in the form
+# $$ x_2 = x_1 + k v_1 $$
+# are solutions to the system, where $k \in \mathbb{R}$ is a generic constant and $v_1$ is the right eigenvector of $A$ corresponding to the eigenvalue $0$.  
+# We analyze the case where $G𝟙=𝟙$ and we start from $x_1 = q 𝟙$, with $q>0$, and constant prices. By substituing in the system
+# \begin{align*}
+# (I -\frac{1}{b} G) q 𝟙 &= \frac{a - p}{b} 𝟙 \\
+# (q - \frac{q}{b}) 𝟙 &= \frac{a - p}{b} 𝟙 \\
+# q &= \frac{a-p}{b-1}
+# \end{align*}
+# Because, for Perron-Frobenius theorem, the eigenvalue of $G$ equal to $b$ must be $\leq 1$ it follows that, because $q >0$, $p>a$.  
+#
+# To simulate this case, we try to solve the equation $x^* = \frac{a𝟙 - p}{b} + \frac{1}{b} G x^*$ by iteration, trying to reach a fixed-point solution.  
+# We start from different initial conditions that leads to different critical situations.
+
+# +
+using Plots, Graphs, GraphRecipes, LinearAlgebra
+
+N = 5
+a = 10.0
+b = 0.6  
+
+G = [0.0  0.8  0.1  0.1  0.0;
+     0.8  0.0  0.1  0.1  0.0;
+     0.1  0.1  0.0  0.8  0.0;
+     0.1  0.1  0.8  0.0  0.0;
+     0.25 0.25 0.25 0.25 0.0]
+
+v = [1.0, 1.0, -1.0, -1.0, 0.0] # left and right eigenvector of G corresponding to eigenvalue b
+
+steps = 15
+
+p_net = graphplot(G, names=1:N, nodesize=0.2, curves=false, markercolor=:lightgrey,
+                  size=(600, 400))
+display(p_net)
+
+# =======================================================
+# SCENARIO 1: ZERO SOLUZIONI (Deriva infinita)
+# =======================================================
+# Prezzi sbilanciati
+p_zero = [8.0, 8.0, 10.0, 10.0, 9.0]
+x_zero_history = zeros(N, steps)
+x_curr_zero = zeros(N) # Partono da zero e divergono
+
+for t in 1:steps
+    x_zero_history[:, t] = x_curr_zero
+    x_curr_zero = (a .- p_zero) ./ b .+ (G * x_curr_zero) ./ b
+end
+
+p_zero_plot = plot(1:steps, x_zero_history', lw=2, legend=false,
+              title="No solution",
+              xlabel="iterations", ylabel="x", size=(600, 400))
+display(p_zero_plot)
+
+# =======================================================
+# SCENARIO 2: INFINITE SOLUZIONI (Tutte positive!)
+# =======================================================   
+# Prezzi bilanciati ma > a per tenere l'equilibrio base positivo
+p_inf = fill(12.0, N)
+
+# L'equilibrio base ora è strettamente positivo!
+x_base = [5.0, 5.0, 5.0, 5.0, 5.0]
+
+grafici = []
+
+# Scegliamo costanti che non spingano mai nessuno sotto lo zero
+# (-3.0 toglie al massimo 3 unità alla Fazione 2, +3.0 toglie 3 unità alla Fazione 1)
+for k in [-3.0, 0.0, 3.0]
+    x_inf_history = zeros(N, steps)
+    
+    # Ci muoviamo seguendo la "forma" dell'autovettore v
+    x_curr_inf = x_base .+ k .* v
+    
+    for t in 1:steps
+        x_inf_history[:, t] = x_curr_inf
+        x_curr_inf = (a .- p_inf) ./ b .+ (G * x_curr_inf) ./ b
+    end
+    
+    p_temp = plot(title="Infinite solutions (k = $k)",
+                  xlabel="t", ylabel="x", ylims=(0, 10), legend=:topleft)
+    
+    colori_utenti = [:blue, :cyan, :red, :orange, :green]              
+    for i in 1:N
+        plot!(p_temp, 1:steps, x_inf_history[i, :], 
+              lw=3, color=colori_utenti[i])
+    end
+    
+    push!(grafici, p_temp)
+end
+
+# Uniamo i 3 grafici di Scenario 2
+grafico_finale = plot(grafici..., layout=(3, 1), size=(800, 900))
+display(grafico_finale)
+# -
+
+# ### Second case: $\exists i$ such that $b < \sum_j g_{ij}$
+# When the sum of the influences for at least one user $i$ exceeds $b$, the system loses its stability. 
+# The spectral radius of the matrix $\frac{1}{b}G$ can become greater than $1$. So the matrix $\left(I - \frac{1}{b}G\right)$ might still be invertible, but the iterative process required to reach the equilibrium diverges.  
+# The network can enter a situation where if a user increases their consumption slightly, their neighbors will increase theirs to match the strong positive externality. This can push $x^*$ towards infinity.  
+# Even if the system yields a mathematical solution, it has no economic sense because consumption cannot be infinite. To guarantee a stable, finite, and positive Nash Equilibrium, the condition $b > \sum_j g_{ij}$ must hold for all users.
+
+# +
+using LinearAlgebra
+using Plots
+
+# 1. Setup della rete (5 nodi)
+N = 5
+# Creiamo una rete dove tutti sono connessi a tutti.
+# Sottraiamo la matrice identità (I) per avere 0 sulla diagonale (nessuno influenza se stesso)
+# e dividiamo per 4, così la somma di ogni riga è esattamente 1.0
+G = (ones(N, N) - I) ./ (N - 1)
+
+# Parametri del mercato
+a = 10.0
+p = fill(2.0, N)  # Vettore di 5 prezzi a 2.0
+
+# SCELTA CRITICA: b è minore della somma delle influenze (che è 1.0)
+b = 0.5 
+
+# 2. Simulazione della dinamica (Best Response)
+steps = 15
+x_history = zeros(N, steps)
+x_current = zeros(N) # Partono tutti da consumo nullo
+
+for t in 1:steps
+    x_history[:, t] = x_current
+    
+    # Aggiornamento simultaneo per tutti e 5 i nodi con un'unica riga di algebra
+    x_next = (a .* ones(N) .- p) ./ b .+ (1.0 / b) * (G * x_current)
+    x_current = x_next
+end
+
+# 3. Creazione del Grafico
+p_plot = plot(title="Divergenza della Rete a 5 Nodi (b = $b < 1.0)",
+              xlabel="Iterazioni (Tempo)", 
+              ylabel="Livello di Consumo (x)",
+              legend=:topleft, grid=true)
+
+# Aggiungiamo le 5 linee al grafico con un semplice ciclo
+for i in 1:N
+    plot!(p_plot, 1:steps, x_history[i, :], 
+          label="Utente $i", lw=2, marker=:circle)
+end
+
+display(p_plot)
+# -
+
 # # <center>Continuous-time Dynamics and Optimal Control</center>
 #
 # Let's consider the adoption dynamics due to the following continuous-time relaxation towards best response:
 #
 # $$\begin{aligned}
-# \dot{x}(t) &= -\Lambda x(t) + \frac{1}{b}(a𝟙 - p(t) + Gx(t)) = \\
+# \dot{x}(t) &= -\Lambda \left(x(t) + \frac{1}{b}(a𝟙 - p(t) + Gx(t))\right) = \\
 # &= \left( \frac{1}{b} G - \Lambda \right) x(t) + \frac{1}{b}(a𝟙 - p(t)) \doteq \\
 # &\doteq D x(t) + f(t)
 # \end{aligned}$$
 #
-# where $\Lambda=\text{diag}(\pi_i)$ is an individual update rate and we defined $D \doteq \frac{1}{b} G - \Lambda$ and $f(t) \doteq \frac{1}{b}(a𝟙 - p(t))$. 
+# where we defined $D \doteq \frac{1}{b} G - \Lambda$ and $f(t) \doteq \frac{1}{b}(a𝟙 - p(t))$ and $\Lambda=\text{diag}(\pi_i)$ is an individual update rate. 
 #
 # To solve this differential equation, we use the ansatz $x(t) = e^{D t} c(t)$, where $c(t)$ is an unknown function depending on $t$. We get:
 #
@@ -1057,7 +1059,7 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 #
 # $$\mathcal{V} = -\mathcal{R} = \min_{u(\cdot)} \int_{0}^{T} L(x,u,t) dt$$
 #
-# The PMP provides necessary conditions for optimality. However, in this linear-quadratic problem, since the dynamics are linear, the objective function is concave in $u$ and the condition $b > \sum_j g_{ij} \quad \forall i$ prevents the state variables $(x, p)$ from diverging, the first-order conditions derived from the PMP are also sufficient for a global maximum.
+# The PMP provides necessary conditions for optimality. However, in this linear-quadratic problem, since the dynamics are linear, the objective function is concave in $u$ and the condition $b > \sum_j g_{ij} \ \forall i$ prevents the state variables $(x, p)$ from diverging, the first-order conditions derived from the PMP are also sufficient for a global maximum.
 #
 # We define the Hamiltonian:
 #
@@ -1118,7 +1120,7 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 # We can integrate these equations backward in time to find $S(t), \ \nu(t)$, and finally we have the $2$ equations for $\dot{x}(t), \ \dot{p}(t)$ assuming optimal control:
 #
 # $$\begin{cases}
-# \dot{x}(t) &= -\Lambda x(t) + \frac{1}{b}(a𝟙 - p(t) + Gx(t))\\
+# \dot{x}(t) &= -\Lambda \left(x(t) + \frac{1}{b}(a𝟙 - p(t) + Gx(t))\right)\\
 # u(t) &= \dot{p}(t) = -K^{-1} B^\top \left( S(t) z(t) + \nu(t) \right)
 # \end{cases}$$
 
@@ -1415,244 +1417,13 @@ end
 # Visualizziamo i plot
 p_combined = plot(plt_x, plt_p, layout=(1, 2), size=(1200, 400))
 display(p_combined)
-
-# +
-# ==================================================================
-# SIMULAZIONE CON GRAFO INDIRETTO
-# ==================================================================
-using LinearAlgebra, Distributions, Graphs, GraphRecipes, Plots, SparseArrays
-
-println("\n" * "="^60)
-println("SIMULAZIONE CON GRAFO INDIRETTO - T=10, N=10")
-println("="^60)
-
-# Parametri
-T = 50                   # numero di macro-step temporali
-N = 10
-a = 10.0
-b = 2.0
-c = 1.0
-beta = 5.0
-kappa = 0.5
-s = fill(0.3, N)
-
-# ==================================================================
-# Costruzione di un grafo indiretto casuale (con matrice simmetrica)
-# ==================================================================
-# Creiamo una matrice di adiacenza simmetrica per grafo indiretto
-G_undirected = zeros(Float64, N, N)
-for i in 1:N
-    for j in (i+1):N
-        if rand() < 0.3  # probabilità di connessione
-            weight = rand() * 0.4
-            G_undirected[i, j] = weight
-            G_undirected[j, i] = weight  # rendo simmetrica
-        end
-    end
-end
-
-println("\nMatrice di adiacenza (simmetrica):")
-println("Sparsità: ", round(nnz(sparse(G_undirected)) / (N^2) * 100, digits=2), "%")
-
-# Visualizziamo il grafo indiretto
-g_undirected = Graph(G_undirected .> 0)
-gr()
-plt_undirected = graphplot(g_undirected, names=1:N, nodesize=0.3, method=:spring,
-                           markercolor=:lightgrey, curves=false)
-display(plt_undirected)
-
-degrees = degree(g_undirected)
-println("\nGradi dei nodi (grafo indiretto):")
-for i in 1:N
-    println("Nodo $i: grado=$(degrees[i])")
-end
-
-# ==================================================================
-# EVOLUZIONE
-# ==================================================================
-# Inizializziamo adozioni e prezzi
-x_und = rand(N)
-p_und = fill(3.0, N)
-
-# Matrice storia
-history_x_und = zeros(T, N)
-history_p_und = zeros(T, N)
-
-# Ciclo di evoluzione: T macro-step
-for t in 1:T
-    println("\n=== Macro step $t ===")
-    println("stato iniziale x: ", round.(x_und, digits=3))
-    println("stato iniziale p: ", round.(p_und, digits=3))
-
-    # Monopolista calcola variazione di prezzo
-    delta_p = exact_greedy_bellman(x_und, p_und, G_undirected, a, b, c, s, kappa)
-    p_und .+= delta_p
-
-    # Micro-aggiornamenti degli utenti
-    simulate_users!(x_und, p_und, G_undirected, a, b, beta, s, 3 * N)
-
-    println("stato finale x: ", round.(x_und, digits=3))
-    println("stato finale p: ", round.(p_und, digits=3))
-
-    history_x_und[t, :] = x_und
-    history_p_und[t, :] = p_und
-end
-
-# ==================================================================
-# PLOT: Evoluzione per i 3 nodi con grado più alto
-# ==================================================================
-top_degree_nodes = sort(1:N, by=i->degrees[i], rev=true)[1:3]
-
-println("\n=== Nodi con grado più alto (grafo indiretto) ===")
-for node in top_degree_nodes
-    println("Nodo $node: grado=$(degrees[node])")
-end
-
-# Plot temporali
-t_steps = 1:T
-plt_x_und = plot(legend=:topright, xlabel="Macro-step", ylabel="Adozione x", 
-                 title="Evoluzione adozioni (grafo indiretto)", lw=2)
-plt_p_und = plot(legend=:topright, xlabel="Macro-step", ylabel="Prezzo p", 
-                 title="Evoluzione prezzi (grafo indiretto)", lw=2)
-
-colors = [:red, :blue, :green]
-for (idx, node) in enumerate(top_degree_nodes)
-    plot!(plt_x_und, t_steps, history_x_und[:, node], label="Nodo $node", 
-          color=colors[idx], marker=:circle)
-    plot!(plt_p_und, t_steps, history_p_und[:, node], label="Nodo $node", 
-          color=colors[idx], marker=:circle)
-end
-
-# Visualizziamo i plot
-p_combined_und = plot(plt_x_und, plt_p_und, layout=(1, 2), size=(1200, 400))
-display(p_combined_und)
-
-# +
-# ==================================================================
-# SIMULAZIONE CON GRAFO FULLY CONNECTED (INDIRETTO)
-# ==================================================================
-println("\n" * "="^60)
-println("SIMULAZIONE CON GRAFO FULLY CONNECTED - T=10, N=10")
-println("="^60)
-
-# Parametri (stessi di prima)
-T = 50                    # numero di macro-step temporali
-N = 10
-a = 10.0
-b = 2.0
-c = 1.0
-beta = 50.0
-kappa = 0.5
-s = fill(0.3, N)
-T=50
-
-# ==================================================================
-# Costruzione di un grafo FULLY CONNECTED (completo)
-# ==================================================================
-# Ogni nodo è connesso a tutti gli altri con peso uniforme
-G_fullconn = ones(Float64, N, N)
-G_fullconn[diagind(G_fullconn)] .= 0.0  # Rimuovo auto-loop
-G_fullconn .*= 0.3  # Peso uniforme su tutti gli archi
-
-println("\nMatrice di adiacenza (fully connected):")
-println("Ogni nodo connesso a tutti gli altri (tranne se stesso)")
-println("Peso uniforme: 0.3")
-
-# Visualizziamo il grafo fully connected
-g_fullconn = Graph(G_fullconn .> 0)
-gr()
-plt_fullconn = graphplot(g_fullconn, names=1:N, nodesize=0.3, method=:spring,
-                         markercolor=:lightgrey, curves=false)
-display(plt_fullconn)
-
-degrees_fc = degree(g_fullconn)
-println("\nGradi dei nodi (tutti uguali in fully connected):")
-println("Grado di ogni nodo: $(degrees_fc[1])")
-
-# ==================================================================
-# EVOLUZIONE
-# ==================================================================
-# Inizializziamo adozioni e prezzi
-x_fc = rand(N)
-p_fc = fill(3.0, N)
-
-# Matrice storia
-history_x_fc = zeros(T, N)
-history_p_fc = zeros(T, N)
-
-# Ciclo di evoluzione: 10 macro-step
-for t in 1:T
-    println("\n=== Macro step $t ===")
-    println("stato iniziale x: ", round.(x_fc, digits=3))
-    println("stato iniziale p: ", round.(p_fc, digits=3))
-
-    # Monopolista calcola variazione di prezzo
-    delta_p = exact_greedy_bellman(x_fc, p_fc, G_fullconn, a, b, c, s, kappa)
-    p_fc .+= delta_p
-
-    # Micro-aggiornamenti degli utenti
-    simulate_users!(x_fc, p_fc, G_fullconn, a, b, beta, s, 3 * N)
-
-    println("stato finale x: ", round.(x_fc, digits=3))
-    println("stato finale p: ", round.(p_fc, digits=3))
-
-    history_x_fc[t, :] = x_fc
-    history_p_fc[t, :] = p_fc
-end
-
-# ==================================================================
-# PLOT: Evoluzione per i 3 nodi con grado più alto
-# ==================================================================
-# In fully connected tutti hanno lo stesso grado, quindi ne selezioniamo 3 a caso
-top_nodes_fc = [1, 4, 7]
-
-println("\n=== Nodi selezionati (fully connected) ===")
-for node in top_nodes_fc
-    println("Nodo $node: grado=$(degrees_fc[node])")
-end
-
-# Plot temporali
-t_steps = 1:T
-plt_x_fc = plot(legend=:topright, xlabel="Macro-step", ylabel="Adozione x", 
-                title="Evoluzione adozioni (grafo fully connected)", lw=2)
-plt_p_fc = plot(legend=:topright, xlabel="Macro-step", ylabel="Prezzo p", 
-                title="Evoluzione prezzi (grafo fully connected)", lw=2)
-
-colors = [:red, :blue, :green]
-for (idx, node) in enumerate(top_nodes_fc)
-    plot!(plt_x_fc, t_steps, history_x_fc[:, node], label="Nodo $node", 
-          color=colors[idx], marker=:circle)
-    plot!(plt_p_fc, t_steps, history_p_fc[:, node], label="Nodo $node", 
-          color=colors[idx], marker=:circle)
-end
-
-# Visualizziamo i plot
-p_combined_fc = plot(plt_x_fc, plt_p_fc, layout=(1, 2), size=(1200, 400))
-display(p_combined_fc)
-
-# ==================================================================
-# VERIFICA TEORICA: Prezzo statico per fully connected
-# ==================================================================
-println("\n" * "-"^60)
-println("VERIFICA TEORICA: Grafo fully connected è simmetrico")
-println("-"^60)
-
-p_static_fc = fill((a + c) / 2, N)
-p_final_fc = history_p_fc[T, :]
-diff_fc = p_final_fc .- p_static_fc
-
-println("Prezzo ottimale TEORICO statico: p* = $(a + c)/2 = $((a+c)/2)")
-println("Prezzo FINALE dalla dinamica: ", round.(p_final_fc, digits=4))
-println("Differenza media: ", round(mean(abs.(diff_fc)), digits=4))
-println("\nNota: Anche fully connected dovrebbe convergere a p* = $((a+c)/2)")
-println("      ma con dinamica greedy su $T step non ci arriva ancora.")
 # -
 
 # ## Greedy Bellman Equation with sinchronous deterministic dynamics
 #
 # In this section we aim to solve computationally the greedy Bellman Equation with a finite time horizon $H$, shorter than the time horizon of the original problem $T$, to make it computationnaly tractable. For this we consider a synchronous dynamics where agents at each step set $t$ update their action as
-# $$x_{i,t} = s_i x_{i,t-1} + (1-s_i) x_{i,t}^{NE}$$
-# where $s_i$ is the intrinsic resistance of agent $i$ and $x_{i,t}^{NE} = \frac{a-p_{i,t}+ \sum_j g_{ij} x_{j,t-1}}{b}$ is the Nash Equilibrium level of consumption in which agent $i$ consider the rest of the network still frozen at the previous time step.  
+# $$x_{i,t} = s_i x_{i,t-1} + (1-s_i) x_{i,t-1}^{NE}$$
+# where $s_i$ is the intrinsic resistance of agent $i$ and $x_{i,t-1}^{NE} = \frac{a-p_{i,t}+ \sum_j g_{ij} x_{j,t-1}}{b}$ is the Nash Equilibrium level of consumption in which agent $i$ consider the rest of the network still frozen at the previous time step.  
 # Because the dynamics is deterministic, the monopolist can simulate the system and solve the greedy Bellman Equation to choose the best price variation. The instantaneous reward for the monopolist is
 # $$ r_t = (p_t-c) \cdot x_t - \kappa (p_t - p_{t-1})^2$$
 # We introduce a time discount for the total reward of the monopolist and we choose exponential time discounting to ensure that the Bellman principle of Optimality is valid and to have time consistency. So the total reward is
@@ -1765,7 +1536,7 @@ end
 # Because the Noisy Best Response is equivalent to a Gaussian distribution, at $99.7\%$ the consumption is bounded by
 # $$x_i \le \mu_i + 3\sigma = \mu_i + \frac{3}{\sqrt{\beta b}}$$
 # We define $g_{max} = \max_i \sum_j g_{ij}$ be the maximum weighted out-degree of the network. To find an upper bound for $\mu_i$, we consider the minimum price $p_i=c$ and maximum positive externality $g_{max} x_{max} $
-# $$\mu_{max} \le \frac{a - c}{b} + \frac{g_{max}}{b} x_{max}$$
+# $$\mu_{max} = \frac{a - c}{b} + \frac{g_{max}}{b} x_{max}$$
 # So the upper bound for $x_i$ is
 # $$x_{max} = \frac{a - c}{b} + \frac{g_{max}}{b} x_{max} + \frac{3}{\sqrt{\beta b}} \\
 # x_{max} = \frac{\frac{a - c}{b} + \frac{3}{\sqrt{\beta b}}}{1 - \frac{g_{max}}{b}}$$
