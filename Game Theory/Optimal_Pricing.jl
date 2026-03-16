@@ -14,6 +14,11 @@
 #     name: julia-1.12
 # ---
 
+include("static_analysis.jl")
+include("continuous_control.jl")
+include("discrete_control.jl")
+using Plots, Graphs, GraphPlot, LinearAlgebra, GraphRecipes, SparseArrays
+
 # **Author:** Emanuele Barbera, Marco Ghirardo, Matteo Grandinetti, Martino Pasqualotto  
 # **Date:** March 2026  
 #
@@ -51,14 +56,6 @@
 # \end{aligned}$$
 #
 # where $𝟙$ is a $N$-dimensional vector of all $1$. 
-# Raga per me questo align sotto qui si può anche togliere non l'ho capito molto  ##############
-# $$\begin{aligned}
-#     \left(I - \frac{1}{b}G\right)x &= \frac{a𝟙 - p}{b} \\
-#     y &= \frac{a𝟙 - p}{b} \implies \left(I - \frac{1}{b}G\right)x = y \\
-#     \tilde{x}_1 &= \frac{\tilde{y}_1}{1 - \frac{\lambda_1}{b}} \\
-#     x^* &= \tilde{x}_1 v_1 + \sum_{k \geq 2} \tilde{x}_k v_k
-# \end{aligned}$$  
-#  ################
 #
 # To have an unique and stable equilibrium, $I - \frac{1}{b}G$ has to be invertible. This can be proved defining the best-response operator
 #
@@ -735,9 +732,9 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey, arro
 # $x^*_1 < x^*_L$: not only the central hub gets a price lower than the price for the leaves, it is also pushed to consume less than the others.
 
 # +
-N = 9
+N = 15
 a = 10.0
-b = 12.0
+b = 18.0
 c = 2.0
 
 G = zeros(N, N)
@@ -868,10 +865,11 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 # (q - \frac{q}{b}) 𝟙 &= \frac{a - p}{b} 𝟙 \\
 # q &= \frac{a-p}{b-1}
 # \end{align*}
-# Because, for Perron-Frobenius theorem, the eigenvalue of $G$ equal to $b$ must be $\leq 1$ it follows that, because $q >0$, $p>a$.  
+# Because, for Perron-Frobenius theorem, the eigenvalue of $G$ equal to $b$ must be $\leq 1$ it follows that, because $q >0$, $p\ge a$.  
 #
-# To simulate this case, we try to solve the equation $x^* = \frac{a𝟙 - p}{b} + \frac{1}{b} G x^*$ by iteration, trying to reach a fixed-point solution.  
-# We start from different initial conditions that leads to different critical situations.
+# To simulate this case, we try to solve the equation $x^* = \frac{a𝟙 - p}{b} + \frac{1}{b} G x^*$ by iteration, trying to reach a fixed-point solution. This corrensponds to a Best Response Dynamics, where the agents update their actions as
+# $$ x_{i,t} = x_{i,t-1}^{NE} $$
+# We start from simulating the case where the system has no solution and then we consider the case where, starting with uniform prices and uniform consumption, we have infinite solutions of the system (here below we plot the solutions corresponding, in the previous formula $x_2 = x_1 + k v_1$, with $x_1=x_{\text{uniform}}$, to $k=-3,0,3$).
 
 # +
 using Plots, Graphs, GraphRecipes, LinearAlgebra
@@ -897,7 +895,6 @@ display(p_net)
 # =======================================================
 # SCENARIO 1: ZERO SOLUZIONI (Deriva infinita)
 # =======================================================
-# Prezzi sbilanciati
 p_zero = [8.0, 8.0, 10.0, 10.0, 9.0]
 x_zero_history = zeros(N, steps)
 x_curr_zero = zeros(N) # Partono da zero e divergono
@@ -954,10 +951,14 @@ display(grafico_finale)
 # -
 
 # ### Second case: $\exists i$ such that $b < \sum_j g_{ij}$
-# When the sum of the influences for at least one user $i$ exceeds $b$, the system loses its stability. 
-# The spectral radius of the matrix $\frac{1}{b}G$ can become greater than $1$. So the matrix $\left(I - \frac{1}{b}G\right)$ might still be invertible, but the iterative process required to reach the equilibrium diverges.  
-# The network can enter a situation where if a user increases their consumption slightly, their neighbors will increase theirs to match the strong positive externality. This can push $x^*$ towards infinity.  
-# Even if the system yields a mathematical solution, it has no economic sense because consumption cannot be infinite. To guarantee a stable, finite, and positive Nash Equilibrium, the condition $b > \sum_j g_{ij}$ must hold for all users.
+# When the sum of the influences for at least one user $i$ exceeds $b$, the system loses its stability.  
+# The spectral radius of the matrix $\frac{1}{b}G$ can become greater than $1$, so the matrix $\left(I - \frac{1}{b}G\right)$ might still be invertible, but the iterative process required to reach the equilibrium diverges.  
+# The network can enter a situation where if a user increases their consumption slightly, their neighbors will increase theirs to match the positive externality. This can push $x^*$ towards infinity.  
+# Even if the system has a mathematical solution, if the spectral radius of the matrix $\frac{1}{b}G$ is greater than $1$, this solution is not stable, meaning that, if the system is in his Nash Equilibrium, a little perturbation can make the consumption of the agents diverge, and in this case it has no economic sense because consumption cannot be infinite.  
+# To guarantee a stable, finite, and positive Nash Equilibrium, the condition $b > \sum_j g_{ij}$ must hold for all users.
+#
+# We first simulate the case where $\rho(\frac{G}{b}) >1$, showing that, starting from $x=(0,\dots,0)$, with a Best Response Dynamics, the system diverges, while if we start in the Nash Equilibrium, without perturbation the Best Response Dynamics doesn't diverge.  
+# We then simulate the case where $\rho(\frac{G}{b}) \le 1$ and the Best Response Dynamics converges.
 
 # +
 using LinearAlgebra
@@ -968,7 +969,7 @@ N = 5
 # Creiamo una rete dove tutti sono connessi a tutti.
 # Sottraiamo la matrice identità (I) per avere 0 sulla diagonale (nessuno influenza se stesso)
 # e dividiamo per 4, così la somma di ogni riga è esattamente 1.0
-G = (ones(N, N) - I) ./ (N - 1)
+G = erdos_renyi(N, 0.25)  
 
 # Parametri del mercato
 a = 10.0
@@ -1533,7 +1534,7 @@ end
 #
 # To bound the consumption level of the agents, we consider the Nash equilibrium consumption 
 # $$ x_i^* = \frac{a - p_i}{b} + \frac{1}{b} \sum_j g_{ij} x_j^* $$
-# Because the Noisy Best Response is equivalent to a Gaussian distribution, at $99.7\%$ the consumption is bounded by
+# Because in this case the Noisy Best Response is equivalent to a Gaussian distribution, at $99.7\%$ the consumption is bounded by
 # $$x_i \le \mu_i + 3\sigma = \mu_i + \frac{3}{\sqrt{\beta b}}$$
 # We define $g_{max} = \max_i \sum_j g_{ij}$ be the maximum weighted out-degree of the network. To find an upper bound for $\mu_i$, we consider the minimum price $p_i=c$ and maximum positive externality $g_{max} x_{max} $
 # $$\mu_{max} = \frac{a - c}{b} + \frac{g_{max}}{b} x_{max}$$
@@ -1670,3 +1671,92 @@ annotate!(p2, 0.1, 0.5, text(table_text, :left, 8, "Courier"))
 
 display(plot(p1, p2, layout=(2,1), size=(800, 850)))
 println(table_text)
+# -
+
+# ## <center>Reinforcement Learning: Policy Gradient</center>
+#
+# ### 1. One Step Actor Critic
+#
+# In this section we address the problem in discrete time leaving the state and action spaces continuous. With policy gradient methods one chooses a parametrized probability distribution as a policy and let evolve its parameters to find the optimal ones, according to the Policy Gradient Theorem. Along the way a parametrized value function is learned as well. There exists a variety of policy gradient algorithms and many ways to parametrize continuous spaces. The results are particularly interesting as the monopolist doesn't have to know the topology of the network to find reach optimal prices. In this experiment the monopolist reads the consumers' usage and assigns a unique price to all of them. This initial approximation is reasoonable and justified for undirected graphs. The price will follow a Gaussian distribution in which we learn the mean. The method could be extended to learn some parameters for the variance with some refinements on the space parametrization. We follow the algorithm of One Step Actor Critic from Sutton [cit].
+#
+# + Parametrizzazione polinomiale
+#
+# + Gli agenti Best response sporca
+#
+# We implement the algorithms in file `one_step_actor_critic.jl`. We initialize a graph
+
+# +
+using LinearAlgebra
+using Distributions
+using Plots
+
+include("myfunctions.jl")
+
+"""INIT GRAPH"""
+
+N = 6
+
+G = ones(N,N)
+G -= Diagonal(G)
+
+a = 13.0
+b = 12.0
+c = 1.0
+
+checkParameters(G, a, b, c)
+
+Λ = 0.1*diagm(ones(N)+0.25*rand(N)-0.25*rand(N))
+
+
+"""PRELIMINARY STUFF"""
+
+M = influenceMatrix(G,b)
+state_star = bestResponse(M, a, b, c)
+println("State Star is : ", round.(state_star, digits = 4))
+
+p_star = bestPrice(M, a, b, c)
+println("Optimal Price is : ", round.(p_star, digits = 4))
+# -
+
+# We train the monopolist on this graph. We keep track of `state_star` and corresponding optimal price hoping that the agent will learn to lead the discrete time dynamic towards that situation. The parameters choice is essential to converge to a stable result.
+
+# +
+include("One_step_Actor_Critic.jl")
+
+"""EPISODE PARAMETER"""
+γ = 0.90
+T = 100
+
+"""LEARNING PARAMETERS"""
+σ = 0.25
+α_θ = 5e-7
+α_w = 1e-5
+num_training = 10_000
+
+my_θ = one_step_actor_critic(α_θ, α_w, γ, σ, T, num_training);
+# -
+
+# We can now generate an episode with the learned parameters $ \theta $. Changing initial conditions the monopolist seems to have understood where to drive the consumers.
+
+# +
+include("plot_functions.jl")
+
+"""GENERATE EPISODE"""
+
+state_0 = rand(Normal(0.9, 0.1), N)
+
+my_states, my_prices, my_rewards = generate_episode(my_θ, state_0, T);
+
+plot_risultati(my_states, my_prices, 1, T)
+# -
+
+# The results seem rather good. We compare them with episode generated starting from the same initial conditions but where the monopolist controls the prices with a exponential towards the Nash Equilibrium (p_star, mettere meglio)
+
+eu_states, eu_prices, eu_rewards = generate_episode(my_θ, state_0, T; euristic=true);
+plot_risultati(eu_states, eu_prices, 1, T)
+
+# Cumulative rewards with the two methods are on average very similar, the monopolist learned well with the OSAC algorithm. Whereas the euristic exponential relies on the knowledge of the network to characterize Nash Equilibria, the policy learned thanks to policy gradient no (...)
+
+# ## <center>Conclusions</center>
+#
+# bla bla bla
