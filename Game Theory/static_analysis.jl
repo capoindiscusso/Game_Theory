@@ -3,13 +3,6 @@ using Graphs, GraphRecipes, Plots
 
 """GRAPH CREATORS"""
 
-lattice(n) = diagm(1=>trues(n-1), -1=>trues(n-1)) 
-clattice(n) = n == 2 ? lattice(n) : diagm(1=>trues(n-1), -1=>trues(n-1), (n-1)=>trues(1), (-n+1)=>trues(1))
-
-function createGraphLattice(N1,N2; periodic = false)
-    kron(I(N2),lattice(N1)) .| kron(lattice(N2),I(N1))
-end
-
 function createUndirectedGraphStar(N)
     G = zeros(N,N)
     G[1,2:N] .= 1.0
@@ -32,6 +25,7 @@ function createDirectedGraphRing(N)
     G 
 end
 
+"""
 function createGraphErdos(N; p=0.1,sparse=true)
 
     G = adjacency_matrix(erdos_renyi(N, N))      #creates Erdos Renyi graph with random weights
@@ -41,9 +35,16 @@ function createGraphErdos(N; p=0.1,sparse=true)
     sparse ? G : Matrix(G)                                  #Maybe we want sparse for later optimization
 
 end
+"""
 
-function createGraphFullyConnected(N)
-    G = ones(N,N)
+function createGraphFullyConnected(N; directed=false)
+
+    if directed
+        G = rand(N,N)
+    else
+        G = ones(N,N)
+    end
+
     G -= Diagonal(G)
     G
 end
@@ -57,6 +58,8 @@ function createGraphInfluencersCommunities(N_infl, size_com, n_com)
     G[N_infl+1:N, 1:N_infl] .= 1.0
     G
 end
+
+"""STATIC NETWORK ANALYSIS"""
 
 function checkParameters(G, a, b, c)
     if a < 0 || b < 0 || c < 0
@@ -90,6 +93,27 @@ function bestPrice(M, a, b, c)
     return inv(M + transpose(M))*(a*M+c*transpose(M))*ones(size(M,2))
 end
 
+function static_graph_analyis(G, a, b, c)
+
+    println("="^50)
+    println("STATIC ANALYSIS OF THE NETWORK")
+    println("="^50)
+
+    checkParameters(G, a, b, c)
+
+    M = influenceMatrix(G, b)
+
+    x_star = bestResponse(M, a, b, c)
+
+    
+    println("Consumers' usage NE: $(round.(x_star, digits = 4))")
+
+    p_star = bestPrice(M, a, b, c)
+    println("Optimal Prices: $(round.(x_star, digits = 4))")
+
+    println("="^50)
+end
+
 function get_coords_with_arcs(g)
     n = nv(g); pos = rand(2, n) .* 2.0
     for _ in 1:200 
@@ -105,47 +129,5 @@ function get_coords_with_arcs(g)
         end
     end
     return pos[1, :], pos[2, :]
-end
-
-function plot2graphs(G, p_star, x_star; lay = :circular)
-    
-    x_min, x_max = 0.9*minimum(x_star), maximum(x_star)*1.1
-    p_min, p_max = 0.9*minimum(p_star), 1.1*maximum(p_star)
-
-
-
-    p1 = graphplot(G, 
-        names = 1:N, 
-        nodesize = 0.25, 
-        curves = false, 
-        method = lay,      # FORZA il layout
-        marker_z = p_star,          #gradazione in base a p_star
-        markercolor = :viridis,     
-        clims = (p_min, p_max),      
-        colorbar = true,             
-        title = "Prezzi ottimali",
-        fontsize = 8
-    )
-
-    p2 = graphplot(G, 
-        names = 1:N, 
-        nodesize = 0.25, 
-        curves = false, 
-        method = lay,      # FORZA lo stesso layout
-        marker_z = x_star, 
-        markercolor = :plasma,     
-        clims = (x_min, x_max),      
-        colorbar = true,             
-        title = "Usi ottimali",
-        fontsize = 8
-    )
-
-    # Unione dei due plot
-    plot_finale = plot(p1, p2, 
-        layout = (1, 2),             
-        size = (1100, 500), 
-        margin = 10Plots.mm          # Margine aumentato per la legenda
-    )
-    display(plot_finale)
 end
 
