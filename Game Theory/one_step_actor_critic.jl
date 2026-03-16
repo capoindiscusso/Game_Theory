@@ -2,10 +2,9 @@ using LinearAlgebra
 using Distributions
 
 function monopolist_action(state, μ, σ)
-    # μ ora rappresenta il logaritmo del prezzo
-    noise = rand(Normal(0.0, σ))
-    price = exp(μ + noise) * ones(N) # Il rumore è additivo nel log-space
-    return price, noise
+    shift = rand(Normal(0.0, σ))
+    price = exp(μ + shift) * ones(N) 
+    return price, shift
 end
 
 function monopolist_euristic(state, price)
@@ -108,7 +107,7 @@ function one_step_actor_critic(α_θ, α_w, γ, σ, T, num_training)
             μ = transpose(θ)*x
             
             # Ottieni il prezzo e il rumore specifico (ε)
-            price, noise = monopolist_action(state, μ, σ)
+            price, shift = monopolist_action(state, μ, σ)
 
             reward = get_reward(state, price) 
             
@@ -120,8 +119,8 @@ function one_step_actor_critic(α_θ, α_w, γ, σ, T, num_training)
             w += clamp.(α_w * δ * x, -1.0, 1.0) 
 
             # Aggiornamento Actor (Score function per Log-Normal)
-            # Il gradiente di log(π) rispetto a μ quando p = exp(μ + ε) è (noise / σ^2)
-            θ += α_θ * I * δ * (noise / σ^2) * x
+            # Il gradiente di log(π) rispetto a μ quando p = exp(μ + ε) è (shift / σ^2)
+            θ += α_θ * I * δ * (shift / σ^2) * x
 
             I *= γ
             state = new_state
