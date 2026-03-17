@@ -25,17 +25,6 @@ function createDirectedGraphRing(N)
     G 
 end
 
-"""
-function createGraphErdos(N; p=0.1,sparse=true)
-
-    G = adjacency_matrix(erdos_renyi(N, N))      #creates Erdos Renyi graph with random weights
-    #G = (UpperTriangular(adjacency_matrix(erdos_renyi(N, 0.5*p))) + LowerTriangular(adjacency_matrix(erdos_renyi(N, 0.5*p))))
-    G -= Diagonal(G)
-    #G = G .* rand(N,N)
-    sparse ? G : Matrix(G)                                  #Maybe we want sparse for later optimization
-
-end
-"""
 
 function createGraphFullyConnected(N; directed=false)
 
@@ -67,7 +56,7 @@ function checkParameters(G, a, b, c)
     elseif c ≥ a 
         println("Please check a > c")
     elseif b < maximum(sum(G;dims=2))
-        println("Parameter b is low. Multiple equilibria may occur.")
+        println("Parameter b is low. Nash equilibria may not be stable.")
     else
         println("Correctly Initialized Network")
     end
@@ -104,14 +93,14 @@ function static_graph_analysis(G, a, b, c)
     M = influenceMatrix(G, b)
 
     x_star = bestResponse(M, a, b, c)
+    p_star = bestPrice(M, a, b, c)
 
     
     println("Consumers' usage NE: $(round.(x_star, digits = 4))")
-
-    p_star = bestPrice(M, a, b, c)
     println("Optimal Prices: $(round.(p_star, digits = 4))")
-
     println("="^50)
+
+    return x_star, p_star
 end
 
 function get_coords_with_arcs(g)
