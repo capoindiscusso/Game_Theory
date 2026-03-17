@@ -93,7 +93,7 @@ function bestPrice(M, a, b, c)
     return inv(M + transpose(M))*(a*M+c*transpose(M))*ones(size(M,2))
 end
 
-function static_graph_analyis(G, a, b, c)
+function static_graph_analysis(G, a, b, c)
 
     println("="^50)
     println("STATIC ANALYSIS OF THE NETWORK")
