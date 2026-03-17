@@ -81,3 +81,44 @@ function plot_discrete_episode(states, prices, T_0, T_F)
     plot(plot_states, plot_prices, layout=(2,1), legend=false)
 
 end
+
+function plot_continuous_episode(states, prices, rewards, times, T_0, T_F)
+
+    plot_states = plot()
+    plot!(times, states[1,:], label="consume")
+    plot!(times, x_star[1,:], label="x_star", linestyle=:dash)
+    
+    for i in 2:N
+        plot!(times, states[i,:], label="")
+        plot!(times, x_star[i,:], label="", linestyle=:dash)
+    end
+
+    title!("Consumers' usage")
+    xlims!(T_0, T_F)
+    xlabel!("t")
+    ylabel!("x")
+
+    plot_prices = plot()
+
+    for i in 1:N
+        plot!(times, prices[i,:], label="price_$i")
+    end
+
+    title!("Prices")
+    xlims!(T_0, T_F)
+    xlabel!("t")
+    ylabel!("p")
+
+    p_x_p = plot(plot_states, plot_prices, layout=(2,1), legend=true, size=(800,800))
+
+    p_r = plot(times, rewards, label="cumulative reward")
+    title!("Rewards")
+    xlims!(T_0, T_F)
+    xlabel!("t")
+    ylabel!("r")
+
+    l = @layout [a{0.5w} b]
+    plot_final = plot(p_x_p, p_r, layout = l, size=(1200, 800))
+    display(plot_final)
+end
+

@@ -201,11 +201,10 @@ c = 2.0
 G = createGraphFullyConnected(N)
 
 #analyse graph and find x_star and p_star
-static_graph_analysis(G, a,b,c)
+x_star, p_star = static_graph_analysis(G, a,b,c)
 
 
 #theoretical results
-J = ones(N, N)
 x_star_explicit = (0.5 * (a - c) / (b - (N - 1))) * ones(N)
 p_star_explicit = 0.5 * (a + c) * ones(N)
 
@@ -280,7 +279,7 @@ c = 2.0
 G = createDirectedGraphRing(N)
 
 #analyse graph and find x_star and p_star
-static_graph_analysis(G, a,b,c)
+x_star, p_star = static_graph_analysis(G, a,b,c)
 
 #theoretical results
 x_star_explicit = (0.5 * (a - c) / (b - 1)) * ones(N)
@@ -343,7 +342,7 @@ G = adjacency_matrix(random_regular_graph(N, d))
 G = Matrix(G) * 1.0
 
 #analyse graph and find x_star and p_star
-static_graph_analysis(G, a,b,c)
+x_star, p_star = static_graph_analysis(G, a,b,c)
 
 #theoretical results
 w = sum(G[1, :])
@@ -424,7 +423,7 @@ c = 2.0
 G = createUndirectedGraphStar(N)
 
 #analyse graph and find x_star and p_star
-static_graph_analysis(G, a,b,c)
+x_star, p_star = static_graph_analysis(G, a,b,c)
 
 #theoretical results
 z1 = b * (b + N - 1) / (b^2 - (N - 1))
@@ -552,7 +551,7 @@ c = 2.0
 G = createDirectedGraphStar(N)
 
 #analyse graph and find x_star and p_star
-static_graph_analysis(G, a,b,c)
+x_star, p_star = static_graph_analysis(G, a,b,c)
 
 #theoretical results
 denom = 4 * b^2 - (N - 1)
@@ -633,7 +632,7 @@ G[2:N, 1] .= 1.0
 
 
 #analyse graph and find x_star and p_star
-static_graph_analysis(G, a,b,c)
+x_star, p_star = static_graph_analysis(G, a,b,c)
 
 
 #theoretical results
@@ -659,7 +658,7 @@ p_star_isolated_l = c + (a - c) * phil_isolated
 p_star_isolated_1 = c + (a - c) * phi1_isolated
 
 
-pl_diff = p_star[2] - p_star_isolated
+pl_diff = p_star[2] - p_star_isolated_l
 p_hub_diff = p_star[1] - p_star_isolated_1
 
 println("Prezzo_connected_follower - Prezzo_isolated_follower: ", round(pl_diff, digits=4))
@@ -676,11 +675,11 @@ plot2graphs(G, p_star, x_star, lay = :shell)
 
 # +
 #number of influencers
-N_infl = 2
+N_infl = 1
 #number of communities
-n_com = 7
+n_com = 2
 #size of the communities
-S_com = 1
+S_com = 4
 
 #number of agents
 N = N_infl + n_com*S_com
@@ -695,7 +694,7 @@ G = createGraphInfluencersCommunities(N_infl, S_com, n_com)
 
 
 #analyse graph and find x_star and p_star
-static_graph_analysis(G, a,b,c)
+x_star, p_star = static_graph_analysis(G, a,b,c)
 # -
 
 plot2graphs(G, p_star, x_star, lay = :shell)
@@ -713,7 +712,7 @@ n_com = 3;
 S_com = 2
 
 #number of agents
-N = N_infl + n_com*S_com
+N = N_infl + n_com*S_com + 1
 
 #parameters
 a = 10.0
@@ -728,14 +727,14 @@ G[2:N_infl+1, 2: N_infl+1] =createGraphFullyConnected(N_infl)
 
 
 #analyse graph and find x_star and p_star
-static_graph_analysis(G, a,b,c)
+x_star, p_star = static_graph_analysis(G, a,b,c)
 # -
 
 plot2graphs(G, p_star, x_star)
 
 # ## <center>Critical cases<center>
 #
-# We've already computed the Nash Equilibrium value for the consumers
+# We've already computed the Nash Equilibrium value for the users (in this section, we will indicate $x^*$ as the Nash Equilibrium)
 # $$x^* = \frac{a𝟙 - p}{b} + \frac{1}{b} G x^*$$
 # that is, if $I - \frac{1}{b}G$ is invertible
 # $$x^* = \left(I - \frac{1}{b}G\right)^{-1} \frac{a𝟙 - p}{b}$$
@@ -965,7 +964,7 @@ plot(graphs..., layout=(2,1), size=(900, 900), margin=5Plots.mm)
 # Let's consider the adoption dynamics due to the following continuous-time relaxation towards best response:
 #
 # $$\begin{aligned}
-# \dot{x}(t) &= -\Lambda \left(x(t) + \frac{1}{b}(a𝟙 - p(t) + Gx(t))\right) = \\
+# \dot{x}(t) &= -\Lambda \left(x(t) - \frac{1}{b}(a𝟙 - p(t) + Gx(t))\right) = \\
 # &= -\Lambda\left( I - \frac{1}{b} G\right) x(t) + \frac{1}{b}\Lambda(a𝟙 - p(t)) \doteq \\
 # &\doteq D x(t) + f(t)
 # \end{aligned}$$
@@ -1082,121 +1081,69 @@ plot(graphs..., layout=(2,1), size=(900, 900), margin=5Plots.mm)
 # ## Simulation
 
 # +
-using Graphs, GraphRecipes
-using Plots
-using SparseArrays, LinearAlgebra
-
-include("continuous_control.jl")
 include("static_analysis.jl")
+include("continuous_control.jl")
+include("plot_functions.jl")
   
 """PARAMETERS"""
 N = 9
 a = 10.0
 b = 12.0
 c = 2.0 
+
+G = createGraphFullyConnected(N, directed=true)
+
+x_star, p_star = static_graph_analysis(G, a, b, c)
+
+"""DYNAMICAL PARAMETERS"""
 𝛿 = 1.0             #time discount
-
-"""INTEGRATOR TIME STEPS"""
-T_0 = 0.0
-T_F = 100.0
-Δt = 0.01
-
-times = Vector(T_0:Δt:T_F)
-
-steps = length(times)
-
-"""MATRICES"""
-
-#λ = G/b
-#Λ = diagm(vec(sum(G/b;dims=2)))
 Λ = 0.2*diagm(ones(N)+0.25*rand(N)-0.25*rand(N))
 
 k = 1.0
 K = k*diagm(ones(N))
 
-# Assicuriamoci che G sia una matrice e b uno scalare
-G_matrix = G # Se 'g' è il grafo creato con Graphs.jl
+T_0 = 0.0
+T_F = 100.0
+Δt = 0.01
 
-block_top_left = Λ * ( (G_matrix ./ b) - I )
-block_top_right = -Λ/b
-block_bottom_left = zeros(N, N)
-block_bottom_right = zeros(N, N)
+times = Vector(T_0:Δt:T_F)
+steps = length(times)
 
-A = [block_top_left  block_top_right;
-     block_bottom_left block_bottom_right]
+"""AUXILIARY MATRICES"""
+
+A = [Λ * ( (G/b) - I )  -Λ/b;
+     zeros(N, N) zeros(N, N)]
 
 B = [zeros(N, N); I(N)]
 
-
-d_vec = vcat(Λ * (a/b) * ones(N), zeros(N))
-
-A, B, d_vec
+d = vcat(Λ * (a/b) * ones(N), zeros(N));
 # -
 
-include("continuous_control.jl")
-g = c*vcat(ones(N), zeros(N));
-S,v = integrate_backward(A, B, d_vec, g, K, N, 𝛿, Δt, steps);
+# We solve the first system integrating backwards for $S$ and $\nu$, then choosing some random initial conditions, we integrate forward in time.
 
 # +
-include("continuous_control.jl")
-
-println("x_star", round.(x_star, digits = 4))
-println("p_star", round.(p_star, digits = 4))
+S, v= integrate_backward(A, B, d, K, N, 𝛿, Δt, steps);
 
 # Initial condition near NE
-x0 = x_star.*(ones(N)+0.05*rand(N)-0.05*rand(N))
-p0 = p_star.*(ones(N)+0.05*rand(N)-0.05*rand(N))
+x0 = x_star.*(ones(N)+0.1*rand(N)-0.1*rand(N))
+p0 = p_star.*(ones(N)+0.1*rand(N)-0.1*rand(N))
 
-#x0 = rand(N) + 10*ones(N)
-#p0 = rand(N).+4
+println("\nINITIAL CONDITIONS")
+println("x0: $(round.(x0, digits = 4))")
+println("p0: $(round.(p0, digits = 4))")
 
-println("INITIAL CONDITIONS")
-println("x0: $x0")
-println("p0: $p0")
+X, P, U, x_star = integrate_forward(x0, p0, S, v, G, K, Λ, B, N, a, b, c, Δt, steps)
 
-X, P, U = integrate_forward(x0, p0, S, v, G_matrix, K, Λ, B, N, a, b, c, Δt, steps)
-
-println("END OF INTEGRATION")
-println("Final usages: $(X[:,steps])")
-println("Final prices: $(P[:,steps])")
+println("Final usages: $(round.(X[:,steps], digits = 4))")
+println("Final prices: $(round.(P[:,steps], digits = 4))")
 # -
 
-# ### VISUALIZATION
-#
-# Since continuous time did not work I'll create some plots oscillating around NE
+plot_continuous_episode(X, P, times, T_0, T_F)
 
 # +
-p = plot()
+my_rewards = calculate_reward(times, X, P, U, c, 𝛿, k)
 
-for i in 1:N
-    plot!(times, X[i,:], label="x_$i")
-end
-
-title!("Consumers' usage")
-xlims!(T_0, T_F)
-xlabel!("t")
-ylabel!("x")
-
-# +
-p = plot()
-
-for i in 1:N
-    plot!(times, P[i,:], label="p_$i")
-end
-title!("Price Target")
-xlims!(T_0, T_F)
-xlabel!("t")
-ylabel!("p")
-
-# +
-my_reward = calculate_reward(times, X, P, U, c, 𝛿, k)
-
-plot(times, my_reward, label="cumulated reward")
-
-title!("Reward")
-xlims!(T_0, T_F)
-xlabel!("t")
-ylabel!("reward")
+plot_continuous_reward(my_rewards, times, T_0, T_F)
 # -
 
 # # <center>Discrete-time control</center>
