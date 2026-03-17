@@ -109,7 +109,7 @@ function static_graph_analysis(G, a, b, c)
     println("Consumers' usage NE: $(round.(x_star, digits = 4))")
 
     p_star = bestPrice(M, a, b, c)
-    println("Optimal Prices: $(round.(x_star, digits = 4))")
+    println("Optimal Prices: $(round.(p_star, digits = 4))")
 
     println("="^50)
 end
