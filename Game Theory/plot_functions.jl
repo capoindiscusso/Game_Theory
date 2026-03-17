@@ -37,7 +37,7 @@ function plot2graphs(G, p_star, x_star; lay = :circular)
         nodesize = 0.25, 
         curves = false, 
         method = lay,      # FORZA lo stesso layout
-        marker_z = x_star, 
+        marker_z = x_star,     #gradazione in base a x_star
         markercolor = :plasma,     
         clims = (x_min, x_max),      
         colorbar = true,             
@@ -47,7 +47,8 @@ function plot2graphs(G, p_star, x_star; lay = :circular)
 
     # Unione dei due plot
     plot_finale = plot(p1, p2, 
-        layout = (1, 2), 
+        layout = Plots.grid(1, 2), 
+        size = (800, 400),
         margin = 10Plots.mm          # Margine aumentato per la legenda
     )
     display(plot_finale)
