@@ -28,7 +28,7 @@ function plot2graphs(G, p_star, x_star; lay = :circular)
         markercolor = :viridis,     
         clims = (p_min, p_max),      
         colorbar = true,             
-        title = "Prezzi ottimali",
+        title = "Optimal Prices",
         fontsize = 8
     )
 
@@ -41,7 +41,7 @@ function plot2graphs(G, p_star, x_star; lay = :circular)
         markercolor = :plasma,     
         clims = (x_min, x_max),      
         colorbar = true,             
-        title = "Usi ottimali",
+        title = "Consumers' usage at NE",
         fontsize = 8
     )
 
