@@ -14,41 +14,36 @@
 #     name: julia-1.12
 # ---
 
-include("static_analysis.jl")
-include("continuous_control.jl")
-include("discrete_control.jl")
-using Plots, Graphs, GraphPlot, LinearAlgebra, GraphRecipes, SparseArrays
-
-# **Author:** Emanuele Barbera, Marco Ghirardo, Matteo Grandinetti, Martino Pasqualotto  
+# **Authors:** Emanuele Barbera, Marco Ghirardo, Matteo Grandinetti, Martino Pasqualotto  
 # **Date:** March 2026  
 #
 # # <center>Optimal Pricing on Network</center>
 
 #
 #
-# ## <center>Introduction</center>
+# ## Introduction
 #
 # A monopolist sells a divisible good to $N$ consumers. The consumers are connected via a network $G=(V,E)$ defined by an adjacency matrix $G=(g_{ij})$, $i,j=1,\dots,N$. Each consumer $i$’s usage level $x_i$ depends on the goods of her neighbors through a positive externality.  
 # Consumer $i$’s utility is linear-quadratic:
 #
 # $$u_i(x_i,x_{-i}) = ax_i - \frac{b}{2}x_i^2 + \sum_j g_{ij}x_ix_j - p_ix_i$$
 #
-# where $x_i$ is the usage of consumer $i$, $g_{ij}$ is the weight of influence from $j$ to $i$, $p_i$ is the price offered to $i$. Also $a>0$ is the intrinsic utility parameter, and $b>0$ is the sensitivity to own consumption. Consumers simultaneously choose usages to maximize their utilities given the price vector $p=(p_1,\dots,p_N)$. The monopolist sets $p$ in order to maximize the revenue:
+# where $x_i$ is the *usage* of consumer $i$, $g_{ij}$ is the *weight of influence* from $j$ to $i$, $p_i$ is the price offered to $i$. Also $a>0$ is the *intrinsic utility parameter*, and $b>0$ is the *sensitivity to own consumption*. Consumers simultaneously choose usages to maximize their utilities given the price vector $p=(p_1,\dots,p_N)$. The monopolist sets $p$ in order to maximize the revenue:
 #
 # $$R(p) = \sum_i (p_i - c)x_i$$
 #
 # where $c \geq 0$ is the marginal cost of producing the good. We assume $a>c$ to ensure positive demand in isolation, and impose $b > \sum_j g_{ij} \ \forall i$ to guarantee a unique, stable equilibrium.
 #
-# ### 1. Consumer Best Response
+# ## <center>Consumers' Best Response and Nash Equilibrium</center>
 #
-# Consumer's utility function is $u_i(x_i,x_{-i}) = ax_i - \frac{b}{2}x_i^2 + \sum_j g_{ij}x_ix_j - p_ix_i$, that is concave in $x_i$, so to find the Nash equilibrium it's sufficient the first-order condition (assuming that the action space of each consumer is compact, and this is reasonable because it's bounded by $0$ and the total amount of the produced good):
+# Consumer's utility function is $u_i(x_i,x_{-i}) = ax_i - \frac{b}{2}x_i^2 + \sum_j g_{ij}x_ix_j - p_ix_i$, that is concave in $x_i$, so to find the Nash equilibrium it's sufficient a first-order condition (assuming that the action space of each consumer is compact, and this is reasonable because it's bounded by $0$ and the total amount of the produced good):
 #
 # $$\begin{aligned}
-# \frac{\partial u_i}{\partial x_i} &= (a - p_i) - b x_i + \sum_j g_{ij} x_j = 0 \\
-# x_i^* &= \frac{a - p_i}{b} + \frac{1}{b} \sum_j g_{ij} x_j
+# &\frac{\partial u_i}{\partial x_i} = (a - p_i) - b x_i + \sum_j g_{ij} x_j = 0 \\
+# &\mathcal{B}_i(x_{-i}) \doteq x_i^* = \frac{a - p_i}{b} + \frac{1}{b} \sum_j g_{ij} x_j
 # \end{aligned}$$
 #
-# In vectorial form this is:
+# Thus, in vectorial form, the consumers' usage Nash Equilibrium is:
 #
 # $$\begin{aligned}
 # x^* &= \frac{a𝟙 - p}{b} + \frac{1}{b} G x^* \\
@@ -82,7 +77,7 @@ using Plots, Graphs, GraphPlot, LinearAlgebra, GraphRecipes, SparseArrays
 #
 # So, if $b > \sum_j g_{ij} \ \forall i$, we have that $\rho(G) < 1$ and $(I - \frac{1}{b}G)^{-1} = \sum_{i=0}^\infty \left(\frac{1}{b}G\right)^i$.
 #
-# ### 2. Optimal Pricing
+# ## <center>Optimal Pricing</center>
 #
 # If agents consume according to the Nash equilibrium, defining $M = (I - \frac{1}{b}G)^{-1}$, the revenue for the monopolist is
 #
@@ -91,7 +86,7 @@ using Plots, Graphs, GraphPlot, LinearAlgebra, GraphRecipes, SparseArrays
 # &= \frac{1}{b} \left[ -p^\top M p + p^\top M 𝟙 a + 𝟙^\top M p c - 𝟙^\top M 𝟙 ac \right]
 # \end{aligned}$$
 #
-# To maximize $R(p)$ it's sufficient to impose $\nabla_p R = 0$
+# To maximize $R(p)$ it's sufficient to impose $\nabla_p R = 0$:
 #
 # $$\begin{aligned}
 # \nabla_p R &= -(M + M^\top)p^* + M𝟙a + M^\top𝟙c = 0 \\
@@ -123,7 +118,8 @@ using Plots, Graphs, GraphPlot, LinearAlgebra, GraphRecipes, SparseArrays
 # z &= \left( I - (1-\beta) \lambda_G^{-1} G \right)^{-1} \beta \mu
 # \end{aligned}$$
 #
-# where $\beta \in [0,1]$ and $\mu \in \mathbb{R}^N$ is the intrinsic centrality of each node. In our problem this is very similar to the term $M𝟙(a-c)$, so in the expression of the optimal price we can interprete the term $c𝟙$ as a basis price for everyone, plus the term $(M+M^\top)^{-1}M𝟙(a-c)$, that is proportional to the difference between the intrinsic utility parameter $a$ and the marginal cost $c$ and where $M𝟙$ measures how much the agents are influenced by other agents in the network. We can conclude that the agents that are more influenced by others will get higher prices, while agents that have a strong influence will have lower prices. We'll deepen this consideration studying the problem on different networks in the next section.
+# where $\beta \in [0,1]$ and $\mu \in \mathbb{R}^N$ is the intrinsic centrality of each node.\
+# In the expression of the optimal price we can interpret the term $c𝟙$ as a basis price for everyone, $(a-c)𝟙$ as an intrinsic centrality $\mu$ proportional to the difference between the intrinsic utility parameter $a$ and the marginal cost $c$, and $M = (I-\frac{G}{b})^{-1}$ as measure of how much the agents are influenced by other agents in the network. We can conclude that the agents that are more influenced by others will get higher prices, while agents that have a strong influence will have lower prices. We'll deepen this consideration studying the problem on different networks in the next section.
 #
 # We can rewrite the best response vector $x^*$ assuming that the monopolist applies optimal prices, i.e. in an overall equilibrium condition
 #
@@ -137,124 +133,15 @@ using Plots, Graphs, GraphPlot, LinearAlgebra, GraphRecipes, SparseArrays
 #
 # $$x^* = M \frac{a𝟙 - p^*}{b} = M\frac{a𝟙 - \frac{1}{2}(a+c)𝟙}{b} = \frac{1}{2}\frac{a-c}{b} M 𝟙$$
 #
-# we see that, as mentioned before, the consumers' best response still depends on $M = (I - \frac{1}{b}G)^{-1}$, namely on the network topology.
+# we see that, as mentioned before, the consumers' best response still depends on $M = (I - \frac{1}{b}G)^{-1}$, namely on the network topology. 
+#
+# *From now on, unless noted otherwise, we'll refer to $x^*$ as the consumers' usage Nash Equilibrium: that is to interpret as the Nash equilibrium corresponding to the optimal price.*
+#
+# We have implemented the necessary functions to simulate these results in the *static_analysis* and *plot_functions* file: we are widely using them for the simulations in the following section.
 
-# ## Simulation
-
-# +
-using Graphs, GraphRecipes
-using Plots
-using SparseArrays, LinearAlgebra
-
+using Plots, Graphs, LinearAlgebra, GraphRecipes, SparseArrays
 include("static_analysis.jl")
-  
-"""PARAMETERS"""
-N = 9
-a = 10.0
-b = 12.0
-c = 2.0 
-
-"""GRAPH INITIALIZATION"""
-
-#G = createGraphLattice(N,N; periodic=false)
-#G = createGraphStar(N)
-#G = createGraphErdos(N, sparse=false)
-G = createGraphFullyConnected(N)
-
-checkParameters(G, a, b, c)
-
-#RANDOM USAGE AND PRICE INITIALIZATION
-my_p = 11.0*ones(N)
-my_x = 1.1*ones(N) + 0.1*rand(N)
-
-my_utility = utility(my_x, my_p, G, a, b)
-println("Consumers utilities are ", my_utility)
-
-R = reward(my_x, my_p, c)
-println("Reward is ", R)
-
-M = influenceMatrix(G, b)
-
-x_star = bestResponse(M, a, b, c)
-println("Nash EQ found to be ", round.(x_star, digits = 4))
-
-p_star = bestPrice(M, a, b, c)
-println("Optimal Price is ", round.(p_star, digits = 4))
-
-R_star = reward(x_star, p_star, c)
-
-graphplot(G, names=1:size(G,1), nodesize=0.3, curves=false, markercolor = :lightgrey)
-
-graphplot(G, names=1:size(G,1), nodesize=0.3, edgelabel=round.(G,digits=2), markercolor = :lightgrey)
-
-graphplot(G, names=1:size(G,1), nodesize=0.3, curves=false, method=:shell, markercolor = :lightgrey)
-
-graphplot(G, names=1:size(G,1), nodesize=0.3, method=:shell, edgelabel=round.(G,digits=2), markercolor = :lightgrey)
-
-# +
-using LinearAlgebra, Plots, Graphs
-
-include("static_analysis.jl")
-
-N = 15
-a, b, c = 20.0, 12.0, 1.0  
-α, η = 0.2, 0.05           # Reattività utenti e monopolista
-T = 300
-
-# GRAFO
- g = erdos_renyi(N, 0.25)
-# g = star_graph(N) 
-G = Float64.(adjacency_matrix(g))
-
-for i in 1:N, j in 1:N
-    if G[i,j] > 0 G[i,j] = 2.5 end # Peso uniforme 2.5
-end
- 
-x = fill(0.5, N)
-p = fill(a/2, N)
-history_p = zeros(T, N)
-out_influence = sum(G, dims=1)[:] 
-
-for t in 1:T
-
-    x = (1 - α) .* x .+ α .* max.(0.1, (a .- p .+ G * x) ./ b)
-    
-    grad = (x .- (p .- c) ./ b) .- 1.0 .* out_influence .* (p .- c) ./ b
-    p .+= η .* grad
-    p .= max.(c + 0.1, p)
-    
-    history_p[t, :] = p
-end
-
-nx, ny = get_coords_with_arcs(g)
-
-# Plotting
-
-# Plot 1: Traiettorie dei Prezzi (Tutte le linee visibili e con legenda)
-p1 = plot(history_p, title="Evoluzione Prezzi su Grafo Erdős-Rényi", lw=2, 
-          palette=:tab20, legend=:outerright, 
-          labels=reshape(["Nodo $i" for i in 1:N], 1, N))
-
-# Plot 2: Il Grafo con Archi e Labels
-p2 = plot(title="Topologia della Rete e Mappa dei Prezzi (Viola=Economico)", 
-          axis=false, grid=false, aspect_ratio=:equal, legend=false)
-
-# DISEGNO ARCHI: Grigi, Visibili (lw=1.3)
-for e in edges(g)
-    u, v = src(e), dst(e)
-    plot!(p2, [nx[u], nx[v]], [ny[u], ny[v]], color=:gray, lw=1.3, alpha=0.35)
-end
-
-# DISEGNO NODI: Dimensione fissa, Colore = Prezzo
-scatter!(p2, nx, ny, marker_z = p, markercolor = :viridis, 
-         markersize = 12, colorbar = true, markerstrokewidth=0)
-
-# AGGIUNTA LABELS IDENTIFICATIVE
-price_labels = [string("N", i, ":\n", round(p[i], digits=1)) for i in 1:N]
-annotate!(p2, [(nx[i], ny[i] + 0.18, text(price_labels[i], 7, :black, :center, :bold)) for i in 1:N])
-
-plot(p1, p2, layout=(2,1), size=(850, 1100), margin=10Plots.mm)
-# -
+include("plot_functions.jl")
 
 # ##  <center>Analytical Results and Simulations on Different Networks</center>
 #
@@ -286,7 +173,7 @@ plot(p1, p2, layout=(2,1), size=(850, 1100), margin=10Plots.mm)
 # Having found an explicit expression for $M$, we can now study how the consumers' usages and the optimal price vector are influenced by the network. 
 # In this case the optimal price vector, as for any other undirected network, takes the same form $p^* = \frac{1}{2}(a+c) 𝟙$, in which actually the network does not play any role.
 #
-# Instead, the consumers' usage Nash Equilibrium corresponding to the optimal price vector is:
+# Instead, the consumers' usage Nash Equilibrium is:
 #
 # $$x^* =  \frac{1}{2}\frac{a-c}{b} M 𝟙 = \frac{1}{2}\frac{(a-c)}{b}\left(\frac{b}{b+1}I +\frac{b}{(b+1)(b+1-N)}J\right) 𝟙$$
 #
@@ -302,34 +189,32 @@ plot(p1, p2, layout=(2,1), size=(850, 1100), margin=10Plots.mm)
 #
 
 # +
-N = 9
+#number of agents
+N = 9   
+
+#parameters
 a = 10.0
 b = 12.0
 c = 2.0
 
+#adjacency matrix
 G = createGraphFullyConnected(N)
 
-checkParameters(G, a, b, c)
+#analyse graph and find x_star and p_star
+static_graph_analysis(G, a,b,c)
 
-M = influenceMatrix(G, b)
 
-x_star = bestResponse(M, a, b, c)
-println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
-
-p_star = bestPrice(M, a, b, c)
-println("Prezzo ottimale: ", round.(p_star, digits=4))
-
+#theoretical results
 J = ones(N, N)
-M_explicit = (b / (b + 1)) * I + (b / ((b + 1) * (b + 1 - N))) * J
 x_star_explicit = (0.5 * (a - c) / (b - (N - 1))) * ones(N)
 p_star_explicit = 0.5 * (a + c) * ones(N)
 
-println("M teorica calcolata: ", round.(M_explicit, digits=4))
-println("x_star teorica: ", round.(x_star_explicit, digits=4))
-println("p_star teorica: ", round.(p_star_explicit, digits=4))
 
-graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
+println("x_star_th: ", round.(x_star_explicit, digits=4))
+println("p_star_th: ", round.(p_star_explicit, digits=4))
 # -
+
+plot2graphs(G, p_star, x_star)
 
 # ### Directed Ring
 #
@@ -376,38 +261,36 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 #
 # $p^*$ corresponds in turns to the same vector obtained for an undirected graph. This is not surprising, since despite being directed, the graph at hand is an example of *regular graph*, in which for each node the cardinalities of the out-neighborhood $|\mathcal{N}_i|$ and of the in-neighborhood $|\mathcal{N}_i^-|$ are equal and correspond to the same value for every node (in this case $|\mathcal{N}_i| = |\mathcal{N}_i^-| = 1 \ \forall i$), so that each node influences and is influenced by exactly one node.
 #
-# The consumers' usage Nash Equilibrium corresponding to the optimal price vector:
+# The consumers' usage Nash Equilibrium
 #
 # $$x^* = M\frac{a𝟙-p^*}{b} = \frac{1}{2}\frac{a-c}{b}M𝟙 = \frac{1}{2}\frac{a-c}{b}\frac{b}{b-1}𝟙 = \frac{1}{2}\frac{a-c}{b-1}𝟙$$
 #
 # is analogous to the one obtained in the fully connected graph, considering that in this case $\sum_jg_{ij} = 1 \ \forall i$. Considerations similar to the ones for the fully connected graph can be done.
 
 # +
-N = 9
+#number of agents
+N = 9   
+
+#parameters
 a = 10.0
 b = 12.0
 c = 2.0
 
+#adjacency matrix
 G = createDirectedGraphRing(N)
-checkParameters(G, a, b, c)
 
-M = influenceMatrix(G, b)
+#analyse graph and find x_star and p_star
+static_graph_analysis(G, a,b,c)
 
-x_star = bestResponse(M, a, b, c)
-println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
-
-p_star = bestPrice(M, a, b, c)
-println("Prezzo ottimale: ", round.(p_star, digits=4))
-
+#theoretical results
 x_star_explicit = (0.5 * (a - c) / (b - 1)) * ones(N)
 p_star_explicit = 0.5 * (a + c) * ones(N)
 
-println("x_star teorica: ", round.(x_star_explicit, digits=4))
-println("p_star teorica: ", round.(p_star_explicit, digits=4))
-
-using GraphRecipes
-graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey, arrow=true)
+println("x_star th: ", round.(x_star_explicit, digits=4))
+println("p_star th: ", round.(p_star_explicit, digits=4))
 # -
+
+plot2graphs(G, p_star, x_star)
 
 # ### Generic Regular Graph
 #
@@ -447,34 +330,33 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey, arro
 # Notice in all the cases discussed so far both the optimal prices and the Nash equilibrium usages are the same for every agent. 
 
 # +
-N = 9
+#number of agents
+N = 9   
+
+#parameters
 a = 10.0
 b = 12.0
 c = 2.0
-d = 4
 
+#adjacency matrix
 G = adjacency_matrix(random_regular_graph(N, d))
 G = Matrix(G) * 1.0
 
-checkParameters(G, a, b, c)
+#analyse graph and find x_star and p_star
+static_graph_analysis(G, a,b,c)
 
-M = influenceMatrix(G, b)
-
-x_star = bestResponse(M, a, b, c)
-println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
-
-p_star = bestPrice(M, a, b, c)
-println("Prezzo ottimale: ", round.(p_star, digits=4))
-
+#theoretical results
 w = sum(G[1, :])
 x_star_explicit = (0.5 * (a - c) / (b - w)) * ones(N)
 p_star_explicit = 0.5 * (a + c) * ones(N)
 
-println("x_star teorica: ", round.(x_star_explicit, digits=4))
-println("p_star teorica: ", round.(p_star_explicit, digits=4))
+println("x_star th: ", round.(x_star_explicit, digits=4))
+println("p_star th: ", round.(p_star_explicit, digits=4))
 
-graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
+
 # -
+
+plot2graphs(G, p_star, x_star)
 
 # ### Undirected Star Graph
 #
@@ -530,38 +412,38 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 #
 
 # +
-N = 9
+#number of agents
+N = 9   
+
+#parameters
 a = 10.0
 b = 12.0
 c = 2.0
 
+#adjacency matrix
 G = createUndirectedGraphStar(N)
 
-checkParameters(G, a, b, c)
+#analyse graph and find x_star and p_star
+static_graph_analysis(G, a,b,c)
 
-M = influenceMatrix(G, b)
-
-x_star = bestResponse(M, a, b, c)
-println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
-
-p_star = bestPrice(M, a, b, c)
-println("Prezzo ottimale: ", round.(p_star, digits=4))
-
+#theoretical results
 z1 = b * (b + N - 1) / (b^2 - (N - 1))
 zk = b * (b + 1) / (b^2 - (N - 1))
 z = [z1; fill(zk, N-1)]
 x_star_explicit = (0.5 * (a - c) / b) * z
 p_star_explicit = 0.5 * (a + c) * ones(N)
 
-println("x_star teorica: ", round.(x_star_explicit, digits=4))
-println("p_star teorica: ", round.(p_star_explicit, digits=4))
+println("x_star th: ", round.(x_star_explicit, digits=4))
+println("p_star th: ", round.(p_star_explicit, digits=4))
 
-graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
+
 # -
+
+plot2graphs(G, p_star, x_star, lay = :stress)
 
 # ### Directed Star Graph: Single Influencer and Isolated Followers
 #
-# We recall that, by looking at the best response for each agent $ B_i(x_{-i})= \frac{a-p_i}{b}+\frac{1}{b}\sum_jg_{ij}x_j$, we must interpret a directed edge $(i,j)$ from $i$ to $j$ as the influence that $j$ has on $i$. It follows that to model a star graph with a central influencer we must construct a graph in which all the leaves in the star have an outgoing edge connecting them to the central hub. Namely:
+# We recall that, by looking at the best response for each agent $ \mathcal{B}_i(x_{-i})= \frac{a-p_i}{b}+\frac{1}{b}\sum_jg_{ij}x_j$, we must interpret a directed edge $(i,j)$ from $i$ to $j$ as the influence that $j$ has on $i$. It follows that to model a star graph with a central influencer we must construct a graph in which all the leaves in the star have an outgoing edge connecting them to the central hub. Namely:
 # \begin{align*}
 # G = \begin{pmatrix} 0 & 0 & 0 &\cdots & 0 \\ 1 & 0 & 0 &\cdots & 0  \\ 1 & 0 & 0 &\cdots & 0 \\ \vdots & \ddots & \ddots & \ddots  &\vdots \\1 & 0 & 0 &\cdots & 0  \end{pmatrix}
 # \end{align*}
@@ -574,6 +456,7 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 # \begin{align*}
 #     &G𝟙 = 𝟙-\delta^{(1)}\\
 # \end{align*}
+# $\delta^{(1)}$ being the vector of all zeros apart from a $1$ in the first position.
 # Thus 
 # \begin{align*}
 #        &M= \sum_{k=0}^\infty\left(\frac{G}{b}\right)^k = \sum_{k=0}^1\left(\frac{G}{b}\right)^k = \left(I+\frac{G}{b}\right) \\
@@ -657,37 +540,34 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 # and $x_1^* > x_L^*$ holds: the central hub consumes more than anyone else.
 
 # +
-N = 9
+#number of agents
+N = 9   
+
+#parameters
 a = 10.0
 b = 12.0
 c = 2.0
 
+#adjacency matrix
 G = createDirectedGraphStar(N)
 
-checkParameters(G, a, b, c)
+#analyse graph and find x_star and p_star
+static_graph_analysis(G, a,b,c)
 
-M = influenceMatrix(G, b)
-
-x_star = bestResponse(M, a, b, c)
-println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
-
-p_star = bestPrice(M, a, b, c)
-println("Prezzo ottimale: ", round.(p_star, digits=4))
-
+#theoretical results
 denom = 4 * b^2 - (N - 1)
 phi1 = (2 * b^2 - (b + 1) * (N - 1)) / denom
 phil = (2 * b^2 + b) / denom
 phi = [phi1; fill(phil, N-1)]
 
 x_explicit = (a - c) / b^2 * [b * (1 - phi1); fill((1 - phi1) + b * (1 - phil), N-1)]
-println("x_star teorica: ", round.(x_explicit, digits=4))
-
 p_star_explicit = c * ones(N) + (a - c) * phi
-println("p_star teorica: ", round.(p_star_explicit, digits=4))
 
-
-graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey, arrow=true)
+println("x_star th: ", round.(x_explicit, digits=4))
+println("p_star th: ", round.(p_star_explicit, digits=4))
 # -
+
+plot2graphs(G, p_star, x_star, lay = :stress)
 
 # ### Single Influencer and Fully Connected Followers
 #
@@ -716,9 +596,15 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey, arro
 # \end{align*}
 # Again the price applied on the hub is lower. Comparing this result with the one obtained in the directed star we're interested in showing how the network between the followers has influenced their price
 # \begin{align*}
-#    p^*_{\text{connected follower}} - p^*_{\text{isolated follower}}   =  \frac{(2b+1)(b-(N-2))}{4b^2 - 4b(N-2) - (N-1)} -\frac{2b^2+b}{4b^2-(N-1)}  > 0 \ \ \  \forall b, N |\  b >N-1, N>2
+#    p^*_{\text{connected follower}} - p^*_{\text{isolated follower}}   = (a-c)\left[ \frac{(2b+1)(b-(N-2))}{4b^2 - 4b(N-2) - (N-1)} -\frac{2b^2+b}{4b^2-(N-1)} \right] > 0 \ \ \  \forall b, N,a,c |\  b >N-1, N>2, a>c
 # \end{align*}
-# That is to say the positive externality added in this second case (if we're in a well posed problem with $N>2$) causes the  price on the followers to rise.
+# That is to say the positive externality added in this second case (if we're in a well posed problem with $N>2$) causes the  price on the followers to rise.\
+# On the other hand:
+# \begin{align*}
+#    p^*_{\text {hub with connected followers}} - p^*_{\text{hub with isolated followers}}   = (a-c) \left[\frac{2b^2 - b(3N-5) - (N-1)}{4b^2 - 4b(N-2) - (N-1)}-\frac{2b^2-(b+1)(N-1)}{4b^2-(N-1)}\right]  < 0 \ \ \  \forall b, N,a,c |\  b >N-1, N>2, a>c
+# \end{align*}
+# The connectedness of followers causes the price on the influencer to diminish. 
+#
 # Finally:
 # \begin{align*}
 #     x^* = \frac{a-c}{b}M[𝟙-\phi] = \frac{a-c}{b}\begin{bmatrix}
@@ -729,28 +615,28 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey, arro
 # \end{bmatrix}
 # \end{align*}
 # This time it is verified that, for a well posed problem,
-# $x^*_1 < x^*_L$: not only the central hub gets a price lower than the price for the leaves, it is also pushed to consume less than the others.
+# $x^*_1 < x^*_L$. This means that not only the central hub gets a price lower than the price for the leaves and lower than the one it got in the case of isolated followers: it is also pushed to consume less than its followers.
 
 # +
-N = 15
+#number of agents
+N = 9   
+
+#parameters
 a = 10.0
-b = 18.0
+b = 12.0
 c = 2.0
 
+#adjacency matrix
 G = zeros(N, N)
 G[2:N, 2:N] = createGraphFullyConnected(N-1)
 G[2:N, 1] .= 1.0
 
-checkParameters(G, a, b, c)
 
-M = influenceMatrix(G, b)
+#analyse graph and find x_star and p_star
+static_graph_analysis(G, a,b,c)
 
-x_star = bestResponse(M, a, b, c)
-println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
 
-p_star = bestPrice(M, a, b, c)
-println("Prezzo ottimale: ", round.(p_star, digits=4))
-
+#theoretical results
 denom = 4*b^2-4*b*(N-2)-(N-1)
 phi1 = (2*b^2-b*(3*N-5)-(N-1))/ denom
 phil = ((2*b+1)*(b-(N-2))) / denom
@@ -758,24 +644,29 @@ phi = [phi1; fill(phil, N-1)]
 
 
 x_star_explicit = (a - c) / b * [(1 - phi1); fill((b)/(b-(N-2))*((1 - phi1)/b + 1 - phil), N-1)]
-println("x_star teorica: ", round.(x_star_explicit, digits=4))
+
 
 p_star_explicit = c * ones(N) + (a - c) * phi
-println("p_star teorica: ", round.(p_star_explicit, digits=4))
+println("x_star th: ", round.(x_star_explicit, digits=4))
+println("p_star th: ", round.(p_star_explicit, digits=4))
 
 
 
 denom = 4 * b^2 - (N - 1)
 phil_isolated = (2 * b^2 + b) / denom
-p_star_isolated = c + (a - c) * phil_isolated
+phi1_isolated = (2 * b^2 - (b + 1) * (N - 1)) / denom
+p_star_isolated_l = c + (a - c) * phil_isolated
+p_star_isolated_1 = c + (a - c) * phi1_isolated
+
 
 pl_diff = p_star[2] - p_star_isolated
+p_hub_diff = p_star[1] - p_star_isolated_1
 
-
-println("Prezzo_connesso - Prezzo_isolato: ", round(pl_diff, digits=4))
-
-graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
+println("Prezzo_connected_follower - Prezzo_isolated_follower: ", round(pl_diff, digits=4))
+println("Prezzo_hub_connected_flws - Prezzo_hub_isolated_flws: ", round(p_hub_diff, digits=4))
 # -
+
+plot2graphs(G, p_star, x_star, lay = :shell)
 
 # ### Multiple Isolated Influencers and Communities of Followers
 #
@@ -784,67 +675,65 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 #    
 
 # +
-N_infl = 1
-S_com = 4
-n_com = 3;
+#number of influencers
+N_infl = 2
+#number of communities
+n_com = 7
+#size of the communities
+S_com = 1
+
+#number of agents
 N = N_infl + n_com*S_com
+
+#parameters
 a = 10.0
 b = 12.0
 c = 2.0
 
+#adjacency matrix
 G = createGraphInfluencersCommunities(N_infl, S_com, n_com)
 
-checkParameters(G, a, b, c)
 
-M = influenceMatrix(G, b)
-
-x_star = bestResponse(M, a, b, c)
-println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
-
-p_star = bestPrice(M, a, b, c)
-println("Prezzo ottimale: ", round.(p_star, digits=4))
-
-
-
-
-graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
+#analyse graph and find x_star and p_star
+static_graph_analysis(G, a,b,c)
 # -
+
+plot2graphs(G, p_star, x_star, lay = :shell)
 
 # Può essere utile confronare il caso con un influencer e due comunità da 4 vs il caso di prima con 1 influencer e 8 fully connected
 
 # INFLUENCER DEGLI INFLUENCERS E COMUNITà
 
 # +
+#number of 2nd-level influencers
 N_infl = 3
-S_com = 3
+#number of communities
 n_com = 3;
-N = N_infl + n_com*S_com + 1
+#size of the communities
+S_com = 2
+
+#number of agents
+N = N_infl + n_com*S_com
+
+#parameters
 a = 10.0
 b = 12.0
 c = 2.0
 
+#adjacency matrix
 G = zeros(N, N)
 G[2:N_infl+1, 1] .= 1.0
 G[2:N, 2:N] = createGraphInfluencersCommunities(N_infl, S_com, n_com)
 G[2:N_infl+1, 2: N_infl+1] =createGraphFullyConnected(N_infl)
 
-checkParameters(G, a, b, c)
 
-M = influenceMatrix(G, b)
-
-x_star = bestResponse(M, a, b, c)
-println("Equilibrio Nash per gli usi: ", round.(x_star, digits=4))
-
-p_star = bestPrice(M, a, b, c)
-println("Prezzo ottimale: ", round.(p_star, digits=4))
-
-
-
-
-graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
+#analyse graph and find x_star and p_star
+static_graph_analysis(G, a,b,c)
 # -
 
-# ## <center>Multiple Nash Equilibria<center>
+plot2graphs(G, p_star, x_star)
+
+# ## <center>Critical cases<center>
 #
 # We've already computed the Nash Equilibrium value for the consumers
 # $$x^* = \frac{a𝟙 - p}{b} + \frac{1}{b} G x^*$$
@@ -859,151 +748,216 @@ graphplot(G, names=1:N, nodesize=0.3, curves=false, markercolor=:lightgrey)
 # If $x_1$ is a solution to the system $Ax=y$, all vector in the form
 # $$ x_2 = x_1 + k v_1 $$
 # are solutions to the system, where $k \in \mathbb{R}$ is a generic constant and $v_1$ is the right eigenvector of $A$ corresponding to the eigenvalue $0$.  
-# We analyze the case where $G𝟙=𝟙$ and we start from $x_1 = q 𝟙$, with $q>0$, and constant prices. By substituing in the system
+# We analyze the case where $G$ is regular, i.e. $G𝟙=w𝟙$, and we start from $x_0 = q 𝟙$, with $q>0$, and constant prices. By substituing in the system
 # \begin{align*}
 # (I -\frac{1}{b} G) q 𝟙 &= \frac{a - p}{b} 𝟙 \\
-# (q - \frac{q}{b}) 𝟙 &= \frac{a - p}{b} 𝟙 \\
-# q &= \frac{a-p}{b-1}
-# \end{align*}
-# Because, for Perron-Frobenius theorem, the eigenvalue of $G$ equal to $b$ must be $\leq 1$ it follows that, because $q >0$, $p\ge a$.  
+# (q - \frac{qw}{b}) 𝟙 &= \frac{a - p}{b} 𝟙 \\
+# q &= \frac{a-p}{b-w}
+# \end{align*} 
 #
-# To simulate this case, we try to solve the equation $x^* = \frac{a𝟙 - p}{b} + \frac{1}{b} G x^*$ by iteration, trying to reach a fixed-point solution. This corrensponds to a Best Response Dynamics, where the agents update their actions as
-# $$ x_{i,t} = x_{i,t-1}^{NE} $$
-# We start from simulating the case where the system has no solution and then we consider the case where, starting with uniform prices and uniform consumption, we have infinite solutions of the system (here below we plot the solutions corresponding, in the previous formula $x_2 = x_1 + k v_1$, with $x_1=x_{\text{uniform}}$, to $k=-3,0,3$).
+# We simulate the cases where the system has zero or infinite solutions.  
+# We first try to solve the equation $x^* = \frac{a\mathbf{1} - p}{b} + \frac{1}{b} G x^*$ by iteration, starting from a uniform level of consumption. This corresponds to a Best Response Dynamics, where the agents iteratively update their actions as
+# $$x_{i,t+1} = x_{i,t}^{BR} = \frac{a\mathbf{1} - p}{b} + \frac{1}{b} G x_{t}$$
+# We will see that in this first scenario the dynamics diverges both in the cases in which we have zero or infinite solutions.  
+# The only case in which this dynamics doesn't diverge is when $b=\rho(G)$ and the system $x^* = \frac{a\mathbf{1} - p}{b} + \frac{1}{b} G x^*$ admits solution. In this case the Best Response Dynamics converges, if $G$ is not bipartite, to a Nash Equilibrium out of the infinite ones.
+#
+# Then, we consider the case where, by starting with uniform prices and uniform consumption, the orthogonality condition is met and we obtain infinite solutions. Below, we plot the trajectories corresponding to the formula $x_2 = x_1 + k v_1$, where $x_1 = q 𝟙$, for the arbitrary constants $k \in \{-3, 0, 3\}$.
 
 # +
 using Plots, Graphs, GraphRecipes, LinearAlgebra
 
 N = 5
-a = 10.0
-b = 0.6  
+a = 10.0  
 
 G = [0.0  0.8  0.1  0.1  0.0;
      0.8  0.0  0.1  0.1  0.0;
      0.1  0.1  0.0  0.8  0.0;
      0.1  0.1  0.8  0.0  0.0;
-     0.25 0.25 0.25 0.25 0.0]
+     0.25 0.25 0.25 0.25 0.0]  # In this case G is a stochastic matrix, G𝟙 = 𝟙 (w = 1)
+    
+b = 0.6 # corresponds to the second largest eigenvalue of G
 
-v = [1.0, 1.0, -1.0, -1.0, 0.0] # left and right eigenvector of G corresponding to eigenvalue b
+v = [1.0, 1.0, -1.0, -1.0, 0.0] # left and right eigenvector of I - G/b associated to the eigenvalue λ = 0
 
+labels = reshape(["User $i" for i in 1:N], 1, N)
+colors = [:blue, :cyan, :red, :orange, :green]
 steps = 15
 
 p_net = graphplot(G, names=1:N, nodesize=0.2, curves=false, markercolor=:lightgrey,
                   size=(600, 400))
 display(p_net)
 
-# =======================================================
-# SCENARIO 1: ZERO SOLUZIONI (Deriva infinita)
-# =======================================================
+# CASE 1A: Best Response Dynamics - Zero Solutions
+
 p_zero = [8.0, 8.0, 10.0, 10.0, 9.0]
 x_zero_history = zeros(N, steps)
-x_curr_zero = zeros(N) # Partono da zero e divergono
+x_curr_zero = zeros(N) 
 
 for t in 1:steps
     x_zero_history[:, t] = x_curr_zero
     x_curr_zero = (a .- p_zero) ./ b .+ (G * x_curr_zero) ./ b
 end
 
-p_zero_plot = plot(1:steps, x_zero_history', lw=2, legend=false,
-              title="No solution",
-              xlabel="iterations", ylabel="x", size=(600, 400))
-display(p_zero_plot)
-
-# =======================================================
-# SCENARIO 2: INFINITE SOLUZIONI (Tutte positive!)
-# =======================================================   
-# Prezzi bilanciati ma > a per tenere l'equilibrio base positivo
-p_inf = fill(12.0, N)
-
-# L'equilibrio base ora è strettamente positivo!
-x_base = [5.0, 5.0, 5.0, 5.0, 5.0]
-
-grafici = []
-
-# Scegliamo costanti che non spingano mai nessuno sotto lo zero
-# (-3.0 toglie al massimo 3 unità alla Fazione 2, +3.0 toglie 3 unità alla Fazione 1)
-for k in [-3.0, 0.0, 3.0]
-    x_inf_history = zeros(N, steps)
-    
-    # Ci muoviamo seguendo la "forma" dell'autovettore v
-    x_curr_inf = x_base .+ k .* v
-    
-    for t in 1:steps
-        x_inf_history[:, t] = x_curr_inf
-        x_curr_inf = (a .- p_inf) ./ b .+ (G * x_curr_inf) ./ b
-    end
-    
-    p_temp = plot(title="Infinite solutions (k = $k)",
-                  xlabel="t", ylabel="x", ylims=(0, 10), legend=:topleft)
-    
-    colori_utenti = [:blue, :cyan, :red, :orange, :green]              
-    for i in 1:N
-        plot!(p_temp, 1:steps, x_inf_history[i, :], 
-              lw=3, color=colori_utenti[i])
-    end
-    
-    push!(grafici, p_temp)
+p_div_zero = plot(title="Divergence (Zero Solutions)",
+                  xlabel="iterations", ylabel="x", legend=:topleft)
+for i in 1:N
+    plot!(p_div_zero, 1:steps, x_zero_history[i, :], 
+          lw=3, color=colors[i], label="User $i")
 end
 
-# Uniamo i 3 grafici di Scenario 2
-grafico_finale = plot(grafici..., layout=(3, 1), size=(800, 900))
-display(grafico_finale)
+display(p_div_zero)
+
+# CASE 1B: Best Response Dynamics - Infinite Solutions
+
+p_inf = fill(12.0, N)
+x_inf_brd_history = zeros(N, steps)
+x_curr_inf_brd = fill(6.0, N)  
+
+for t in 1:steps
+    x_inf_brd_history[:, t] = x_curr_inf_brd
+    x_curr_inf_brd = (a .- p_inf) ./ b .+ (G * x_curr_inf_brd) ./ b
+end
+
+p_div_inf = plot(title="Divergence (Infinite Solutions)",
+                 xlabel="iterations", ylabel="x", legend=:bottomleft)
+for i in 1:N
+    plot!(p_div_inf, 1:steps, x_inf_brd_history[i, :], 
+          lw=3, color=colors[i], label="User $i")
+end
+
+display(p_div_inf)
+
+# CASE 2: Convergence to a NE when b = ρ(G) - Infinite Solutions
+
+b_rho = 1.0 
+p_rho = fill(10.0, N) 
+
+x_rho_history = zeros(N, steps)
+x_curr_rho = [4.0, 8.0, 7.0, 9.0, 5.0] 
+
+for t in 1:steps
+    x_rho_history[:, t] = x_curr_rho
+    x_curr_rho = (a .- p_rho) ./ b_rho .+ (G * x_curr_rho) ./ b_rho
+end
+
+p_conv_rho = plot(title="Convergence to a NE (b = ρ(G))",
+                  xlabel="iterations", ylabel="x", legend=:topleft)
+for i in 1:N
+    plot!(p_conv_rho, 1:steps, x_rho_history[i, :], 
+          lw=3, color=colors[i], label="User $i")
+end
+
+display(p_conv_rho)
+
+# CASE 3: Infinite Solutions (Stationary states)
+
+w = 1.0
+x_base = fill((a - p_inf[1]) / (b - w), N) 
+
+graphs = []
+
+for k in [-3.0, 0.0, 3.0]
+    x_curr_inf = x_base .+ k .* v
+    
+    plt_inf = plot(title="Infinite solutions (k = $k)",
+                   xlabel="t", ylabel="x", ylims=(0, 10), legend=:topleft)
+                  
+    for i in 1:N
+        hline!(plt_inf, [x_curr_inf[i]], lw=3, color=colors[i], label="User $i")
+    end
+    
+    push!(graphs, plt_inf)
+end
+
+final_graph = plot(graphs..., layout=(3, 1), size=(800, 900))
+display(final_graph)
 # -
 
 # ### Second case: $\exists i$ such that $b < \sum_j g_{ij}$
 # When the sum of the influences for at least one user $i$ exceeds $b$, the system loses its stability.  
-# The spectral radius of the matrix $\frac{1}{b}G$ can become greater than $1$, so the matrix $\left(I - \frac{1}{b}G\right)$ might still be invertible, but the iterative process required to reach the equilibrium diverges.  
+# The spectral radius of the matrix $\frac{1}{b}G$ can become greater than $1$, so the matrix $\left(I - \frac{1}{b}G\right)$ might still be invertible, but the Nash Equilibrium is not stable.  
 # The network can enter a situation where if a user increases their consumption slightly, their neighbors will increase theirs to match the positive externality. This can push $x^*$ towards infinity.  
-# Even if the system has a mathematical solution, if the spectral radius of the matrix $\frac{1}{b}G$ is greater than $1$, this solution is not stable, meaning that, if the system is in his Nash Equilibrium, a little perturbation can make the consumption of the agents diverge, and in this case it has no economic sense because consumption cannot be infinite.  
+# If the system has a solution and the spectral radius of the matrix $\frac{1}{b}G$ is greater than $1$, this solution is not stable, meaning that, if the system is in his Nash Equilibrium, a little perturbation can make the consumption of the agents diverge, and in this case it has no economic sense because consumption cannot be infinite.  
+# This can be proven rigorously assuming a Best Response Dynamics for the agents.  
+# The Best Response dynamics at time $t$ is given by $x_{t+1} = \frac{a𝟙 - p}{b} + \frac{1}{b}G x_t$. We define the vector $\varepsilon_t = x_t - x^*$ as the distance from the equilibrium. Subtracting the static equation from the dynamic one, we get
+# $$\varepsilon_{t+1} = x_{t+1} - x^* = \frac{1}{b}G(x_t - x^*) = \frac{1}{b}G \varepsilon_t$$
+# Iterating from $t=0$, the evolution of $\varepsilon_t$ is
+# $$\varepsilon_t = \left(\frac{1}{b}G\right)^t \varepsilon_0$$
+# If the spectral radius of $\frac{G}{b}$ is greater than $1$, $||\varepsilon_t||_\infty \to \infty$ as $t \to \infty$.
+#
+# Furthermore, if $a \ge p_i \ \forall i$, considering the system $(I -\frac{1}{b} G) x^* = \frac{a𝟙 - p}{b}$, the term $\frac{a𝟙 - p}{b}$ is non-negative. For Perron-Frobenius theorem, the left and right eigenvector of $\frac{G}{b}$ corresponding to its greatest eigenvalue, $\lambda_{max} = \rho(\frac{G}{b}) \doteq \rho$, are non-negative. Let $u$ be the left eigenvector of $\frac{G}{b}$ corresponding to its greatest eigenvalue, we consider the following expression
+# \begin{align*}
+# u^\top \cdot (I -\frac{1}{b} G) x^* &= u^\top \cdot \frac{a𝟙 - p}{b} \\
+# u^\top \cdot  x^* (1-\rho) &= u^\top \cdot \frac{a𝟙 - p}{b} \\
+# \end{align*}
+# Because $u$ and $\frac{a𝟙 - p}{b} $ are non-negative, if $\rho >1$ we can conclude that at least one element of $x^*$ is negative, but that doesn't have a physiscal meaning.
+#
 # To guarantee a stable, finite, and positive Nash Equilibrium, the condition $b > \sum_j g_{ij}$ must hold for all users.
 #
-# We first simulate the case where $\rho(\frac{G}{b}) >1$, showing that, starting from $x=(0,\dots,0)$, with a Best Response Dynamics, the system diverges, while if we start in the Nash Equilibrium, without perturbation the Best Response Dynamics doesn't diverge.  
-# We then simulate the case where $\rho(\frac{G}{b}) \le 1$ and the Best Response Dynamics converges.
+# We first simulate the case where $\rho(\frac{G}{b}) >1$, showing that, starting from $x=(0,\dots,0)$, with a Best Response Dynamics, the system diverges, and 
+# we then simulate the case where $\rho(\frac{G}{b}) < 1$ and the Best Response Dynamics converges.  
+# If $\rho(\frac{G}{b})=1$, this implies that exists an eigenvalue of $I - \frac{G}{b}$ is equal to $0$ and so $I - \frac{G}{b}$ is not invertible, a situation that we've already analyzed.
 
 # +
-using LinearAlgebra
-using Plots
-
-# 1. Setup della rete (5 nodi)
 N = 5
-# Creiamo una rete dove tutti sono connessi a tutti.
-# Sottraiamo la matrice identità (I) per avere 0 sulla diagonale (nessuno influenza se stesso)
-# e dividiamo per 4, così la somma di ogni riga è esattamente 1.0
-G = erdos_renyi(N, 0.25)  
+G = ones(N, N) - I
+λ_max = maximum(eigvals(G))
 
-# Parametri del mercato
 a = 10.0
-p = fill(2.0, N)  # Vettore di 5 prezzi a 2.0
+p = [2.0, 2.5, 3.0, 3.5, 4.0] 
 
-# SCELTA CRITICA: b è minore della somma delle influenze (che è 1.0)
-b = 0.5 
-
-# 2. Simulazione della dinamica (Best Response)
 steps = 15
-x_history = zeros(N, steps)
-x_current = zeros(N) # Partono tutti da consumo nullo
+labels = reshape(["User $i" for i in 1:N], 1, N)
+colors = [:blue, :cyan, :red, :orange, :green]
+
+graphs = []
+
+# CASE 1: ρ > 1 
+
+b_div = 3.0 
+x_curr = zeros(N)
+x_hist_div = zeros(N, steps)
+x_star_div = inv(I - G ./ b_div) * ((a .- p) ./ b_div)
 
 for t in 1:steps
-    x_history[:, t] = x_current
-    
-    # Aggiornamento simultaneo per tutti e 5 i nodi con un'unica riga di algebra
-    x_next = (a .* ones(N) .- p) ./ b .+ (1.0 / b) * (G * x_current)
-    x_current = x_next
+    x_hist_div[:, t] = x_curr
+    x_curr = (a .- p) ./ b_div .+ (G * x_curr) ./ b_div
 end
 
-# 3. Creazione del Grafico
-p_plot = plot(title="Divergenza della Rete a 5 Nodi (b = $b < 1.0)",
-              xlabel="Iterazioni (Tempo)", 
-              ylabel="Livello di Consumo (x)",
-              legend=:topleft, grid=true)
+y_min = minimum(x_star_div) - 2.0
+y_max = maximum(x_hist_div) + 5.0
 
-# Aggiungiamo le 5 linee al grafico con un semplice ciclo
+p1 = plot(title="1. Divergence (ρ > 1)", xlabel="iterations", ylabel="x",
+          ylims=(y_min, y_max), legend=:outerright)
+
 for i in 1:N
-    plot!(p_plot, 1:steps, x_history[i, :], 
-          label="Utente $i", lw=2, marker=:circle)
+    plot!(p1, 1:steps, x_hist_div[i, :], lw=2, color=colors[i], label="User $i")
+    hline!(p1, [x_star_div[i]], color=colors[i], lw=1, ls=:dash, label="NE $i: $(round(x_star_div[i], digits=1))")
+end
+push!(graphs, p1)
+
+# CASE 2: ρ < 1
+
+b_conv = 5.0
+x_curr = zeros(N)
+x_hist_conv = zeros(N, steps)
+x_star_stable = inv(I - G ./ b_conv) * ((a .- p) ./ b_conv)
+
+for t in 1:steps
+    x_hist_conv[:, t] = x_curr
+    x_curr = (a .- p) ./ b_conv .+ (G * x_curr) ./ b_conv
 end
 
-display(p_plot)
+p2 = plot(title="2. Convergence (ρ < 1)", xlabel="iterations", ylabel="x",
+          legend=:outerright)
+
+for i in 1:N
+    plot!(p2, 1:steps, x_hist_conv[i, :], lw=2, color=colors[i], label="User $i")
+    hline!(p2, [x_star_stable[i]], color=colors[i], lw=1, ls=:dash, label="NE $i: $(round(x_star_stable[i], digits=1))")
+end
+push!(graphs, p2)
+
+plot(graphs..., layout=(2,1), size=(900, 900), margin=5Plots.mm)
 # -
 
 # # <center>Continuous-time Dynamics and Optimal Control</center>
@@ -1012,11 +966,11 @@ display(p_plot)
 #
 # $$\begin{aligned}
 # \dot{x}(t) &= -\Lambda \left(x(t) + \frac{1}{b}(a𝟙 - p(t) + Gx(t))\right) = \\
-# &= \left( \frac{1}{b} G - \Lambda \right) x(t) + \frac{1}{b}(a𝟙 - p(t)) \doteq \\
+# &= -\Lambda\left( I - \frac{1}{b} G\right) x(t) + \frac{1}{b}\Lambda(a𝟙 - p(t)) \doteq \\
 # &\doteq D x(t) + f(t)
 # \end{aligned}$$
 #
-# where we defined $D \doteq \frac{1}{b} G - \Lambda$ and $f(t) \doteq \frac{1}{b}(a𝟙 - p(t))$ and $\Lambda=\text{diag}(\pi_i)$ is an individual update rate. 
+# where $\Lambda=\text{diag}(\pi_i)$ is an individual update rate we defined $D \doteq -\Lambda\left( I - \frac{1}{b} G\right)$ and $f(t) \doteq \frac{1}{b}\Lambda(a𝟙 - p(t))$. 
 #
 # To solve this differential equation, we use the ansatz $x(t) = e^{D t} c(t)$, where $c(t)$ is an unknown function depending on $t$. We get:
 #
@@ -1038,11 +992,11 @@ display(p_plot)
 # which undergoes the linear dynamics:
 #
 # $$\begin{aligned}
-#     \dot{z} &= \begin{pmatrix} -\Lambda + \frac{1}{b}G & -\frac{1}{b}I \\ 0 & 0 \end{pmatrix} z + \begin{pmatrix} 0 \\ I \end{pmatrix} u + \begin{pmatrix} \frac{a}{b}𝟙 \\ 0 \end{pmatrix} \doteq \\
+#     \dot{z} &= \begin{pmatrix} -\Lambda\left( I - \frac{1}{b} G\right) & -\frac{1}{b}\Lambda \\ 0 & 0 \end{pmatrix} z + \begin{pmatrix} 0 \\ I \end{pmatrix} u + \begin{pmatrix} \frac{a}{b}\Lambda 𝟙 \\ 0 \end{pmatrix} \doteq \\
 #     &\doteq Az+Bu+d
 # \end{aligned}$$
 #
-# where we defined $A \doteq \begin{pmatrix} -\Lambda + \frac{1}{b}G & -\frac{1}{b}I \\ 0 & 0 \end{pmatrix}$, $B \doteq \begin{pmatrix} 0 \\ I \end{pmatrix}$ and $d \doteq \begin{pmatrix} \frac{a}{b}𝟙 \\ 0 \end{pmatrix}$. The intertemporal revenue becomes a quadratic form in the augmented space:
+# where we defined $A \doteq \begin{pmatrix} -\Lambda(I - \frac{1}{b}G) & -\frac{1}{b}\Lambda\\ 0 & 0 \end{pmatrix}$, $B \doteq \begin{pmatrix} 0 \\ I \end{pmatrix}$ and $d \doteq \begin{pmatrix} \frac{a}{b}\Lambda 𝟙 \\ 0 \end{pmatrix}$. The intertemporal revenue becomes a quadratic form in the augmented space:
 #
 # $$R = x^\top p = \frac{1}{2} z^\top Q z, \quad \text{with} \quad Q = \begin{pmatrix} 0 & I \\ I & 0 \end{pmatrix}$$
 #
@@ -1128,13 +1082,23 @@ display(p_plot)
 # ## Simulation
 
 # +
-include("continuous_control.jl")
+using Graphs, GraphRecipes
+using Plots
+using SparseArrays, LinearAlgebra
 
+include("continuous_control.jl")
+include("static_analysis.jl")
+  
+"""PARAMETERS"""
+N = 9
+a = 10.0
+b = 12.0
+c = 2.0 
 𝛿 = 1.0             #time discount
 
 """INTEGRATOR TIME STEPS"""
 T_0 = 0.0
-T_F = 20.0
+T_F = 100.0
 Δt = 0.01
 
 times = Vector(T_0:Δt:T_F)
@@ -1152,9 +1116,8 @@ K = k*diagm(ones(N))
 
 # Assicuriamoci che G sia una matrice e b uno scalare
 G_matrix = G # Se 'g' è il grafo creato con Graphs.jl
-block_top_left = Λ * ( (G_matrix ./ b) - I )
 
-block_top_left = Λ * (G_matrix/b - I)  
+block_top_left = Λ * ( (G_matrix ./ b) - I )
 block_top_right = -Λ/b
 block_bottom_left = zeros(N, N)
 block_bottom_right = zeros(N, N)
@@ -1167,19 +1130,7 @@ B = [zeros(N, N); I(N)]
 
 d_vec = vcat(Λ * (a/b) * ones(N), zeros(N))
 
-
-"""
-A = [Λ*(G/b - I) (-Λ/b);
-     0I(N)      0I(N)]
-
-B = [0I(N); I(N)]
-
-D = vcat(Λ*(a/b)*ones(N), zeros(N));
-
-
-g = c*vcat(ones(N), zeros(N));
-"""
-#display(A)
+A, B, d_vec
 # -
 
 include("continuous_control.jl")
@@ -1189,7 +1140,10 @@ S,v = integrate_backward(A, B, d_vec, g, K, N, 𝛿, Δt, steps);
 # +
 include("continuous_control.jl")
 
-#initial condition near NE
+println("x_star", round.(x_star, digits = 4))
+println("p_star", round.(p_star, digits = 4))
+
+# Initial condition near NE
 x0 = x_star.*(ones(N)+0.05*rand(N)-0.05*rand(N))
 p0 = p_star.*(ones(N)+0.05*rand(N)-0.05*rand(N))
 
@@ -1217,6 +1171,7 @@ p = plot()
 for i in 1:N
     plot!(times, X[i,:], label="x_$i")
 end
+
 title!("Consumers' usage")
 xlims!(T_0, T_F)
 xlabel!("t")
@@ -1307,117 +1262,48 @@ using Distributions
 using Graphs, GraphRecipes, Plots
 
 include("discrete_control.jl")
+include("plot_functions.jl")
+include("static_analysis.jl")
 
-# ==================================================================
-# 1. SOLUZIONE ESATTA BELLMAN (ORIZZONTE H=1)
-# ==================================================================
+T = 50                    # numero di macro-step temporali
 
-
-# ==================================================================
-# 2. DINAMICA DEGLI UTENTI: NOISY BEST RESPONSE
-# ==================================================================
-# Simula la reazione degli utenti in base ai nuovi prezzi
-
-
-# ==================================================================
-# MAIN: ESEMPIO DI ESECUZIONE
-# ==================================================================
-# Il monopolista e gli utenti evolvono per più step macro e micro.
-# Parametri di base
-T = 10                    # numero di macro-step temporali
-N = 10                    # numero di nodi richiesto
+"""GRAPH INITIALIZATION"""
+N = 8                    
 a = 10.0
-b = 2.0
+b = 12.0
 c = 1.0
-beta = 5.0
+
+G = createGraphFullyConnected(N, directed=true)
+
+static_graph_analyis(G,a,b,c)
+
+"""DYNAMICAL PARAMETERS"""
+
+beta = 1000.0
 kappa = 0.5
 s = fill(0.3, N)           # vettore resistenze uniforme
 
-# ==================================================================
-# Costruzione di un grafo orientato
-# ==================================================================
-# utilizziamo una matrice di adiacenza pesata
-G = zeros(Float64, N, N)
-for i in 1:N, j in 1:N
-    if i != j
-        # i primi due nodi hanno probabilità maggiore di inviare un arco
-        if rand() < (i <= 2 ? 0.6 : 0.15)
-            G[i, j] = rand() * 0.3
-        end
-    end
-end
-
-# visualizziamo il grafo con graphplot (versione orientata)
-g = DiGraph(G .> 0)                                    # struttura per graphplot
-# selezioniamo teoricante il backend grafico in caso non sia impostato
-gr()
-plt = graphplot(g, names=1:N, arrowsize=0.3, nodesize=0.3, method=:spring,
-          directed=true, markercolor=:lightgrey)
-# mostriamo il plot teoricante
-display(plt)
-
-println("Grafo orientato")
-println("Out-degrees: ", sum(G .> 0, dims=2)[:])
-println("In-degrees:  ", sum(G .> 0, dims=1)[:])
-
-# inizializziamo le adozioni e i prezzi
+"""INITIAL CONDITIONS"""
 x = rand(N)
 p = fill(3.0, N)
 
-# memorizziamo storia per poterla analizzare in seguito (facoltativo)
-history_x = zeros(T, N)
-history_p = zeros(T, N)
+states = zeros(N, T)
+prices = zeros(N, T)
 
-# evoluzione: T macro‑step, ciascuno con 3·N micro‑step
+"""SIMULATION WITH GREEDY BELLMAN RESPONSE"""
+
 for t in 1:T
-    println("\n=== Macro step ", t, " ===")
-    println("stato iniziale x: ", round.(x, digits=3))
-    println("stato iniziale p: ", round.(p, digits=3))
 
-    # monopolista calcola variazione ottima
-    delta_p = exact_greedy_bellman(x, p, G, a, b, c, s, kappa)
-    p .+= delta_p
+    # evoluzione: T macro‑step, ciascuno con 3·N micro‑step
+    p .+= exact_greedy_bellman(x, p, G, a, b, c, s, kappa)
 
-    # micro‑aggiornamenti degli utenti
     simulate_users!(x, p, G, a, b, beta, s, 3 * N)
 
-    println("stato finale x: ", round.(x, digits=3))
-    println("stato finale p: ", round.(p, digits=3))
-
-    history_x[t, :] = x
-    history_p[t, :] = p
+    states[:,t] = x
+    prices[:,t] = p
 end
 
-# ==================================================================
-# PLOT: Evoluzione temporale di x e p per nodi interessanti
-# ==================================================================
-# Identifichiamo i nodi più interessanti: quelli con gradi (out+in) più alti
-out_degrees = sum(G .> 0, dims=2)[:]
-in_degrees = sum(G .> 0, dims=1)[:]
-total_degrees = out_degrees .+ in_degrees
-
-# Selezioniamo i 3 nodi con degree totale più alto
-top_nodes = sort(1:N, by=i->total_degrees[i], rev=true)[1:3]
-
-println("\n=== Nodi più interessanti (per grado) ===")
-for node in top_nodes
-    println("Nodo $node: out-degree=$(out_degrees[node]), in-degree=$(in_degrees[node]), total=$(total_degrees[node])")
-end
-
-# Creiamo i plot per x e p in funzione di t
-t_steps = 1:T
-plt_x = plot(legend=:topright, xlabel="Macro-step", ylabel="Adozione x", title="Evoluzione delle adozioni", lw=2)
-plt_p = plot(legend=:topright, xlabel="Macro-step", ylabel="Prezzo p", title="Evoluzione dei prezzi", lw=2)
-
-colors = [:red, :blue, :green]
-for (idx, node) in enumerate(top_nodes)
-    plot!(plt_x, t_steps, history_x[:, node], label="Nodo $node", color=colors[idx], marker=:circle)
-    plot!(plt_p, t_steps, history_p[:, node], label="Nodo $node", color=colors[idx], marker=:circle)
-end
-
-# Visualizziamo i plot
-p_combined = plot(plt_x, plt_p, layout=(1, 2), size=(1200, 400))
-display(p_combined)
+plot_discrete_episode(states, prices, 1, T)
 # -
 
 # ## Greedy Bellman Equation with sinchronous deterministic dynamics
@@ -1425,31 +1311,20 @@ display(p_combined)
 # In this section we aim to solve computationally the greedy Bellman Equation with a finite time horizon $H$, shorter than the time horizon of the original problem $T$, to make it computationnaly tractable. For this we consider a synchronous dynamics where agents at each step set $t$ update their action as
 # $$x_{i,t} = s_i x_{i,t-1} + (1-s_i) x_{i,t-1}^{NE}$$
 # where $s_i$ is the intrinsic resistance of agent $i$ and $x_{i,t-1}^{NE} = \frac{a-p_{i,t}+ \sum_j g_{ij} x_{j,t-1}}{b}$ is the Nash Equilibrium level of consumption in which agent $i$ consider the rest of the network still frozen at the previous time step.  
-# Because the dynamics is deterministic, the monopolist can simulate the system and solve the greedy Bellman Equation to choose the best price variation. The instantaneous reward for the monopolist is
+# Because the dynamics is deterministic, the monopolist can simulate the system and solve the greedy Bellman Equation to choose the best price variation. We choose the instantaneous reward for the monopolist to be
 # $$ r_t = (p_t-c) \cdot x_t - \kappa (p_t - p_{t-1})^2$$
+# The first term is the net gain from the consumes, as in the first section, the second term introduces a cost for price variation, a resistance that was considered also in the continuous time section.
 # We introduce a time discount for the total reward of the monopolist and we choose exponential time discounting to ensure that the Bellman principle of Optimality is valid and to have time consistency. So the total reward is
 # $$ R = \sum_{t=1}^H \delta^{t-1} r_t$$
 # To solve computationally the Bellman Equation we use the library *Optim*.
 
 # +
-using LinearAlgebra
 using Optim
 
 include("discrete_control.jl")
 
-N_users = 5
-a = 10.0
-b = 2.0
-c = 1.0
-beta = 5.0
-kappa = 0.5
-s_val = fill(0.3, N_users)
-
-G_matrix = rand(N_users, N_users) .* 0.2
-G_matrix[diagind(G_matrix)] .= 0.0 
-
-x_init = rand(N_users) .* 2.0
-p_init = fill(3.0, N_users)
+x_init = rand(N) .* 2.0
+p_init = fill(3.0, N)
 
 println("--- Stato Iniziale ---")
 println("Adozioni x: ", round.(x_init, digits=2))
@@ -1457,12 +1332,11 @@ println("Prezzi   p: ", round.(p_init, digits=2))
 println("----------------------\n")
 
 
-for orizzonte in [1, 2, 5, 10]
-    tempo = @elapsed best_val, mossa_ottima = exact_bellman_continuous(
-        x_init, p_init, G_matrix, a, b, c, s_val, kappa, orizzonte
-    )
+for H in [1, 2, 5, 10]
+
+    tempo = @elapsed best_val, mossa_ottima = exact_bellman_continuous(x_init, p_init, G, a, b, c, s, kappa, H)
     
-    println(">>> Risoluzione Esatta Continua per H = $orizzonte")
+    println(">>> Risoluzione Esatta Continua per H = $H")
     println("Tempo di calcolo: ", round(tempo, digits=4), " secondi")
     println("Valore Atteso (Q): ", round(best_val, digits=2))
     println("Mossa Ottimale Δp (solo il primo step): ", round.(mossa_ottima, digits=3))
@@ -1612,76 +1486,23 @@ Q_learned, x_history, p_history = train_sarsa!(x_init, p_init, G_matrix, a, b, c
 println("Addestramento completato.")
 # -
 
-# ## <center>ALGORITMO DI MATTEO PER IL 4 </center>
-
-# +
-using LinearAlgebra, Plots, Graphs, SparseArrays, Printf
-
-N = 12
-a, b, c = 26.0, 12.0, 4.0 
-α, η, T = 0.5, 0.05, 1200
-diretto = false  
-
-K = 10
-
-g = erdos_renyi(N, 0.3, is_directed=diretto)
-G_raw = Float64.(adjacency_matrix(g))
-max_sum = maximum(sum(G_raw, dims=2))
-G = sparse(G_raw .* (b * 0.8 / max(1.0, max_sum)))
-
-x = fill(0.1, N)
-p = fill(a/2, N)    
-history_p = zeros(T, N)
-
-for t in 1:T
-    x_BR = (fill(a, N) - p + G * x) ./ b
-    x .= x .+ α .* (x_BR .- x)
-    
-    diff_p = p .- c
-    z_approx = zeros(N)
-    
-    current_term = copy(diff_p) ./ b
-    z_approx .+= current_term
-    for k in 1:K
-        current_term = (G' * current_term) ./ b
-        z_approx .+= current_term
-    end
-    
-    grad = x .- z_approx
-
-    p .+= η .* grad
-    
-    history_p[t, :] .= p
-end
-
-# --- Analisi Finale ---
-bonacich = inv(Matrix(I - (1/b) .* G')) * ones(N)
-out_deg = outdegree(g)
-perm = sortperm(p)
-
-# Visualizzazione Risultati
-header = @sprintf("Nodo | Out-D | Bonacich | Prezzo (K=%d)", K)
-table_rows = [@sprintf("%2d   | %4d  | %8.3f | %7.3f", 
-              perm[i], out_deg[perm[i]], bonacich[perm[i]], p[perm[i]]) for i in 1:N]
-table_text = header * "\n" * "-"^45 * "\n" * join(table_rows, "\n")
-
-p1 = plot(history_p, title="Prezzi con Dinamica Best-Response Locale", palette=:tab20, lw=2, legend=false)
-p2 = plot(title="Stato Finale", grid=false, showaxis=false, ticks=false)
-annotate!(p2, 0.1, 0.5, text(table_text, :left, 8, "Courier"))
-
-display(plot(p1, p2, layout=(2,1), size=(800, 850)))
-println(table_text)
-# -
-
 # ## <center>Reinforcement Learning: Policy Gradient</center>
 #
 # ### 1. One Step Actor Critic
 #
-# In this section we address the problem in discrete time leaving the state and action spaces continuous. With policy gradient methods one chooses a parametrized probability distribution as a policy and let evolve its parameters to find the optimal ones, according to the Policy Gradient Theorem. Along the way a parametrized value function is learned as well. There exists a variety of policy gradient algorithms and many ways to parametrize continuous spaces. The results are particularly interesting as the monopolist doesn't have to know the topology of the network to find reach optimal prices. In this experiment the monopolist reads the consumers' usage and assigns a unique price to all of them. This initial approximation is reasoonable and justified for undirected graphs. The price will follow a Gaussian distribution in which we learn the mean. The method could be extended to learn some parameters for the variance with some refinements on the space parametrization. We follow the algorithm of One Step Actor Critic from Sutton [cit].
+# In this section we address the problem in discrete time leaving the state and action spaces continuous. With policy gradient methods one chooses a parametrized probability distribution as a policy and lets evolve its parameters to find the optimal ones, according to the Policy Gradient Theorem. Along the way a parametrized value function is learned as well. There exists a variety of policy gradient algorithms and many ways to parametrize continuous spaces. The results are particularly interesting as the monopolist doesn't have to know the topology of the network to find reach optimal prices. In this experiment the monopolist reads the consumers' usage and assigns a unique price to all of them. This initial approximation is reasoonable and justified for undirected graphs. The price will follow a Gaussian distribution in which we learn the mean. The method could be extended to learn some parameters for the variance with some refinements on the space parametrization. We follow the algorithm of One Step Actor Critic from "Reinforcement Learning: an Introduction" by R.S. Sutton and  A.G. Barto.
 #
-# + Parametrizzazione polinomiale
+# + $\textbf{Polynomial parametrization}$: in most of the problems involving reinforcement learning on large state or action spaces (e.g. continuous spaces) one needs to implement function approximation tecniques in that, usually, only a small portion of states and/or can be actively sampled through episodes, hence the need to approximate quantities of interest - such as the value function or the action value function of the system - in such a way to generalize previous observations of the quantities themselves. In the special case of OSAC, for example, the role of the value function is essential, in that it allows the actor (i.e. the parameter of the policy) to adjust itself in a meaningful in the process of learning. The approximate value function $\hat{v}(s, \boldsymbol{w})$ associated to a given policy is, in general, expressed as a function of both the state and a vector $\boldsymbol{w}$ of parameters, which is precisely the quantity that the OSAC algorithm allows to learn; one of the most simple and immediate forms of $\hat{v}(s, \boldsymbol{w})$ is the linear one, where $\hat{v}(s, \boldsymbol{w}) = \boldsymbol{w}^{\top} \boldsymbol{x}(s)$ and $\boldsymbol{x}(s)$ represents the so-called $\textit{state feataure vector}$ associated to the state $s$, which has the same dimensions of $\boldsymbol{w}$ and has components $x_{i}(s) : \mathcal{S} \rightarrow \mathbb{R}$. The parametrization of the state feature vector can be chosen with a certain degree of freedom and multiple choices are commonly used in literature; here we provide the simplest one called "polynomial parametrization", according to which $x_{i}(s) = \prod_{j=1}^{k} s_{j}^{c_{i,j}}$ for every state $s \in \mathbb{R^{k}}$ where $c_{i,j} \in {0, 1, ..., n}$ for an arbitrary degree $n$ of the approximation. This choice brings, however, important drawbacks in the design of the RL algorithm, in that polynomial parametrization often allows a slow learning of the parameters and proves itself to be quite inefficient in the case of state spaces of large dimension. Other parametrizations can be used in order to improve the learning curve of the value function, such as the ones based on Fourier basis, tile coding or coarse coding. 
 #
-# + Gli agenti Best response sporca
+# + $\textbf{One Step Actor-Critic algorithm}$: the OSAC learning algorithm requires the inizialization of a random differentiable stochastic policy parametrization for $\pi(a|s, \boldsymbol{\theta})$ where $\theta$ represents a vector of learning parameters according to which mean and variance of $\pi(a|s, \boldsymbol{\theta})$ are expressed (in the following we will use the following representation of the mean alone, i.e. $\mu(\boldsymbol{\theta}) = \boldsymbol{\theta}^{\top} \boldsymbol{x}(s)$, while keeping a constant value of the variance $\sigma$ for simplicity even though, ideally, policy gadient methods aim to a progressive reduction of $\sigma$ throughout the learning process in order to obtain a fully deterministic policy in the end); furthermore an initial differentiable parametrization for the value function $\hat{v}(s, \boldsymbol{w})$ is needed. Multiple episodes are generated and, during each step of a given episode, both $\boldsymbol{\theta}$ and $\boldsymbol{w}$ are updated: in particular, after extractiong an action $A_{t}\sim\pi$ and observing a state $S'$ and a reward $R$, the parameters are updated as
+# $$\delta \leftarrow R + \gamma\hat{v}(S', \boldsymbol{w})-\hat{v}(S, \boldsymbol{w})$$
+# $$\boldsymbol{w} \leftarrow \boldsymbol{w} + \alpha^{\boldsymbol{w}}\delta\nabla\hat{v}(S, \boldsymbol{w})$$
+# $$\boldsymbol{\theta} \leftarrow \boldsymbol{\theta} + \alpha^{\boldsymbol{\theta}}I\delta\nabla \log\pi(A|S, \boldsymbol{\theta})$$
+# $$I \leftarrow \gamma I$$
+# $$S \leftarrow S'$$
+# where $\alpha_{\boldsymbol{\theta}}$ and $\alpha_{\boldsymbol{w}}$ are respectively the learning rates for $\boldsymbol{\theta}$ and ${\boldsymbol{w}}$. At each step, therefore, the parameters of the value function adjust themselves in the direction of the gradient of the estimated value function itself proportionally to $\delta$ (i.e. towards a target which coincides with the TD(0) method one) while the parameters of the policy adjust themselves in order to encourage the policy towards high-value states according to the estimates. At the end of such process it is expected that the parameters update lead to an optimal policy. 
+#
+# + $\textbf{"Noisy" Best Response}$: In order to introduce a non-linear dynamics the discrete BR relaxation behavior used in point 3 has been modified by rendering it "noisy". Namely, while every other player evolves according to a discrete BR dynamics, at each time step one player is randomly selected and a random additive component is added to its comsumption state. Despite not being a standard noisy best response dynamics (which would instead require the state to be extracted from a well specified Boltzmann distribution and would also ensure the convergence of the system towards an absolute maximum of the utility of each player) such noise still provides a fair stochastic component to the otherwise deterministic dynamics that is able to allow more exploration. 
 #
 # We implement the algorithms in file `one_step_actor_critic.jl`. We initialize a graph
 
@@ -1736,7 +1557,7 @@ num_training = 10_000
 my_θ = one_step_actor_critic(α_θ, α_w, γ, σ, T, num_training);
 # -
 
-# We can now generate an episode with the learned parameters $ \theta $. Changing initial conditions the monopolist seems to have understood where to drive the consumers.
+# We can now generate an episode with the learned parameters $ \theta $. The monopolist seems to have understood where to drive the consumers regardless of the initial conditions imposed.
 
 # +
 include("plot_functions.jl")
@@ -1747,16 +1568,16 @@ state_0 = rand(Normal(0.9, 0.1), N)
 
 my_states, my_prices, my_rewards = generate_episode(my_θ, state_0, T);
 
-plot_risultati(my_states, my_prices, 1, T)
+plot_discrete_episode(my_states, my_prices, 1, T)
 # -
 
-# The results seem rather good. We compare them with episode generated starting from the same initial conditions but where the monopolist controls the prices with a exponential towards the Nash Equilibrium (p_star, mettere meglio)
+# The results seem rather good. We compare them with episode generated starting from the same initial conditions but according to a relaxation dynamics in which the monopolist controls the prices with an artificial drive towards the optimal price at the Nash equilibrium (p_star).
 
 eu_states, eu_prices, eu_rewards = generate_episode(my_θ, state_0, T; euristic=true);
-plot_risultati(eu_states, eu_prices, 1, T)
+plot_discrete_episode(eu_states, eu_prices, 1, T)
 
-# Cumulative rewards with the two methods are on average very similar, the monopolist learned well with the OSAC algorithm. Whereas the euristic exponential relies on the knowledge of the network to characterize Nash Equilibria, the policy learned thanks to policy gradient no (...)
+# Cumulative rewards with the two methods are on average very similar, the monopolist learned well with the OSAC algorithm. Whereas the euristic exponential relies on the knowledge of the network to characterize Nash Equilibria, the policy learned thanks to policy gradient does not and, even in such simple approximation where the monopolist has been trained to assign the same price to every player, the algorithm has proven itself able to recognize the N.E on an undirected graph (a situation in which, by construction, the topolocy of the graph brings to the well known result of common prices for every user) as the best possible stratedy to use on the long run.
 
 # ## <center>Conclusions</center>
 #
-# bla bla bla
+# Congrats to the team.
