@@ -47,8 +47,10 @@ function integrate_forward(x0::Vector{}, p0::Vector{}, S::Vector{}, v::Matrix{},
     
     aI = a*ones(N)
 
+
     X = zeros(N,steps)
     P = zeros(N,steps)
+    x_star = zeros(N,steps)
 
     U = zeros(N,steps)
 
@@ -63,6 +65,7 @@ function integrate_forward(x0::Vector{}, p0::Vector{}, S::Vector{}, v::Matrix{},
 
         x_t = X[:,s-1]
         p_t = P[:,s-1]
+        x_star[:,s-1] = (aI - p_t + G*x_t)/b
 
         S_t = S[s-1]
         v_t = v[:,s-1]
@@ -80,5 +83,5 @@ function integrate_forward(x0::Vector{}, p0::Vector{}, S::Vector{}, v::Matrix{},
 
     println("FORWARD INTEGRATION TERMINATED SUCCESSFULLY")
 
-    return X,P,U
+    return X,P,U, x_star
 end
