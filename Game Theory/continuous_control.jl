@@ -6,17 +6,18 @@ function calculate_reward(times::Vector{}, X::Matrix{}, P::Matrix{}, U::Matrix{}
     steps = length(times)
 
     cumulative_reward = 0.0
-    reward = zeros(steps)
+    rewards = zeros(steps)
 
     for s in 1:steps
         cumulative_reward += exp(-𝛿*times[s])*(transpose(X[:,s])*P[:,s] - 0*c*sum(X[:,s]) - k*0.5*sum(U[:,s].^2))*Δt
-        reward[s] = cumulative_reward
+        rewards[s] = cumulative_reward
     end
 
-    reward
+    println("Cumulative reward: $(round(cumulative_reward, digits=2))")
+    rewards
 end
 
-function integrate_backward(A::Matrix{}, B::Matrix{}, D::Vector{}, g::Vector{}, K::Matrix{}, N, 𝛿, Δt, steps)
+function integrate_backward(A::Matrix{}, B::Matrix{}, D::Vector{}, K::Matrix{}, N, 𝛿, Δt, steps)
 
     Q = [0I(N) I(N);
          I(N) 0I(N)]
@@ -38,6 +39,7 @@ function integrate_backward(A::Matrix{}, B::Matrix{}, D::Vector{}, g::Vector{}, 
 
     end
 
+    println("BACKWARD INTEGRATION TERMINATED SUCCESSFULLY")
     return S,v
 end
 
@@ -73,18 +75,10 @@ function integrate_forward(x0::Vector{}, p0::Vector{}, S::Vector{}, v::Matrix{},
         P[:,s] = P[:,s-1] + P_dot*Δt
 
         U[:,s] = P_dot
-
-        """
-        if s == 2
-            println("@ s = 2 X: " , X[:,2])
-            println("@ s = 2 P: " , P[:,2])
-        elseif mod(s,10)==0
-            println("@ s = $s X: " , X[:,s])
-            println("@ s = $s P: " , P[:,s])
-        end
-        """
     
     end
+
+    println("FORWARD INTEGRATION TERMINATED SUCCESSFULLY")
 
     return X,P,U
 end
