@@ -82,15 +82,25 @@ function plot_discrete_episode(states, prices, T_0, T_F)
 
 end
 
-function plot_continuous_episode(states, prices, rewards, times, T_0, T_F)
+function plot_continuous_episode(G, states, prices, rewards, times, T_0, T_F)
+
+    j = argmax(vec(sum(G, dims = 2)))  # Più influenzato (somma per riga)
+    k = argmax(vec(sum(G, dims = 1)))  # Più influente (somma per colonna)
+
 
     plot_states = plot()
-    plot!(times, states[1,:], label="consume")
-    plot!(times, x_star[1,:], label="x_star", linestyle=:dash)
     
-    for i in 2:N
-        plot!(times, states[i,:], label="")
-        plot!(times, x_star[i,:], label="", linestyle=:dash)
+    for i in 1:N
+        if i == j
+            plot!(times, states[i,:], label="x_most_influenced")
+            plot!(times, x_star[i,:], label="x_star_most_influenced", linestyle=:dash)
+        elseif i == k
+            plot!(times, states[i,:], label="x_most_influencial")
+            plot!(times, x_star[i,:], label="x_star_most_influencial", linestyle=:dash)
+        else
+            plot!(times, states[i,:], label="")
+            plot!(times, x_star[i,:], label="", linestyle=:dash)
+        end
     end
 
     title!("Consumers' usage")
@@ -100,8 +110,16 @@ function plot_continuous_episode(states, prices, rewards, times, T_0, T_F)
 
     plot_prices = plot()
 
+
+
     for i in 1:N
-        plot!(times, prices[i,:], label="price_$i")
+        if i == j
+            plot!(times, prices[i,:], label="p_most_influenced")
+        elseif i == k
+            plot!(times, prices[i,:], label="p_most_influencial")
+        else
+            plot!(times, prices[i,:], label="")
+        end
     end
 
     title!("Prices")
