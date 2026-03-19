@@ -83,7 +83,7 @@ function plot_discrete_episode(states, prices, T_0, T_F; p_min = 0.0, p_max = 10
 
 end
 
-function plot_continuous_episode(G, states, prices, rewards, times, T_0, T_F)
+function plot_continuous_episode(G, states, prices, rewards, times, T_0, T_F; titolo="", legenda=true)
 
     j = argmax(vec(sum(G, dims = 2)))  # Più influenzato (somma per riga)
     k = argmax(vec(sum(G, dims = 1)))  # Più influente (somma per colonna)
@@ -111,8 +111,6 @@ function plot_continuous_episode(G, states, prices, rewards, times, T_0, T_F)
 
     plot_prices = plot()
 
-
-
     for i in 1:N
         if i == j
             plot!(times, prices[i,:], label="p_most_influenced")
@@ -128,7 +126,7 @@ function plot_continuous_episode(G, states, prices, rewards, times, T_0, T_F)
     xlabel!("t")
     ylabel!("p")
 
-    p_x_p = plot(plot_states, plot_prices, layout=(2,1), legend=true, size=(800,800))
+    p_x_p = plot(plot_states, plot_prices, layout=(2,1), legend=legenda, size=(800,800))
 
     p_r = plot(times, rewards, label="cumulative reward")
     title!("Rewards")
@@ -137,7 +135,7 @@ function plot_continuous_episode(G, states, prices, rewards, times, T_0, T_F)
     ylabel!("r")
 
     l = @layout [a{0.5w} b]
-    plot_final = plot(p_x_p, p_r, layout = l, size=(1200, 800))
+    plot_final = plot(p_x_p, p_r, layout = l, size=(1200, 800), plot_title=titolo)
     display(plot_final)
 end
 
