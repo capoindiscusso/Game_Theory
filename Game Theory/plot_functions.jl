@@ -54,7 +54,7 @@ function plot2graphs(G, p_star, x_star; lay = :circular)
     display(plot_finale)
 end
 
-function plot_discrete_episode(states, prices, T_0, T_F)
+function plot_discrete_episode(states, prices, T_0, T_F; p_min = 0.0, p_max = 10.0 )
 
     plot_states = plot()
 
@@ -75,6 +75,7 @@ function plot_discrete_episode(states, prices, T_0, T_F)
 
     title!("Prices")
     xlims!(T_0, T_F)
+    ylims!(p_min, p_max)
     xlabel!("t")
     ylabel!("p")
 
