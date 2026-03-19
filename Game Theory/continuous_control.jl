@@ -19,8 +19,8 @@ end
 
 function integrate_backward(A::Matrix{}, B::Matrix{}, D::Vector{}, K::Matrix{}, N, 𝛿, Δt, steps)
 
-    Q = [0I(N) I(N);
-         I(N) 0I(N)]
+    Q = [zeros(N,N) I(N); 
+         I(N) zeros(N,N)]
 
     S = fill(zeros(2*N,2*N),steps)               #Vector of matrices!
     v = zeros(2*N,steps)
@@ -35,6 +35,7 @@ function integrate_backward(A::Matrix{}, B::Matrix{}, D::Vector{}, K::Matrix{}, 
         dv = ((S_t*B*inv(K)*transpose(B) - transpose(A) + 𝛿*I(2*N))*v[:,s+1] - S_t*D)*Δt
 
         S[s] = S[s+1] - dS
+        S[s] = (S[s] + transpose(S[s])) / 2.0
         v[:,s] = v[:,s+1] - dv
 
     end
@@ -43,7 +44,7 @@ function integrate_backward(A::Matrix{}, B::Matrix{}, D::Vector{}, K::Matrix{}, 
     return S,v
 end
 
-function integrate_forward(x0::Vector{}, p0::Vector{}, S::Vector{}, v::Matrix{}, G::Matrix{}, K::Matrix{}, Λ::Matrix{}, B::Matrix{}, N, a, b, c, Δt, steps)
+function integrate_forward(x0::Vector{}, p0::Vector{}, S::Vector{}, v::Matrix{}, G::Matrix{}, K::Matrix{}, Λ::Matrix{}, B::Matrix{}, N, a, b, c, Δt, steps; p_const = false)
     
     aI = a*ones(N)
 
@@ -56,6 +57,8 @@ function integrate_forward(x0::Vector{}, p0::Vector{}, S::Vector{}, v::Matrix{},
 
     X[:,1] = x0
     P[:,1] = p0
+
+    P_dot = zeros(N)
 
     #println("@ s = 1 X: " , X[:,1])
     #println("@ s = 1 P: " , P[:,1])
@@ -72,13 +75,14 @@ function integrate_forward(x0::Vector{}, p0::Vector{}, S::Vector{}, v::Matrix{},
 
         X_dot = -Λ*x_t + Λ*(aI - p_t + G*x_t)/b
         #X_dot = -Λ*x_t + Λ*(aI - p_star + G*x_t)/b
-        P_dot = -inv(K)*transpose(B)*(S_t*vcat(x_t, p_t) + v_t)
+        if !p_const
+            P_dot = -inv(K)*transpose(B)*(S_t*vcat(x_t, p_t) + v_t)
+            U[:,s] = P_dot
+        end
 
         X[:,s] = X[:,s-1] + X_dot*Δt
         P[:,s] = P[:,s-1] + P_dot*Δt
 
-        U[:,s] = P_dot
-    
     end
 
     println("FORWARD INTEGRATION TERMINATED SUCCESSFULLY")
