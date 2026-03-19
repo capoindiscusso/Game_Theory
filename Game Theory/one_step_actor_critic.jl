@@ -139,5 +139,6 @@ function one_step_actor_critic(α_θ, α_w, γ, σ, T, num_training)
     
     end
 
+    println("Policy Gradient Learning Ended")
     return θ
 end
